@@ -1,36 +1,24 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
   const [status, setStatus] = useState("Testando conexão...");
 
   useEffect(() => {
-    async function testar() {
-      try {
-        const { error } = await supabase.auth.getSession();
+    const testar = async () => {
+      const supabase = createClient();
 
-        if (error) {
-          setStatus(`Erro na conexão: ${error.message}`);
-          return;
-        }
+      const { data, error } = await supabase.from("test").select("*");
 
-        setStatus("Conexão com Supabase OK");
-      } catch (err) {
-        setStatus("Erro inesperado ao conectar com Supabase");
+      if (error) {
+        setStatus("Erro na conexão");
+      } else {
+        setStatus("Conectado com sucesso");
       }
-    }
+    };
 
     testar();
   }, []);
 
-  return (
-    <main className="min-h-screen bg-[#020b24] text-white flex items-center justify-center p-6">
-      <div className="rounded-2xl border border-slate-700 bg-[#061538] p-8 max-w-xl w-full text-center">
-        <h1 className="text-3xl font-bold">IR Trade</h1>
-        <p className="mt-4 text-slate-300">{status}</p>
-      </div>
-    </main>
-  );
+  return <div>{status}</div>;
 }

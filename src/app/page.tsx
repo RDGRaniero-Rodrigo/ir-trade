@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -8,7 +10,7 @@ export default function HomePage() {
     const testar = async () => {
       const supabase = createClient();
 
-      const { data, error } = await supabase.from("test").select("*");
+      const { error } = await supabase.from("test").select("*").limit(1);
 
       if (error) {
         setStatus("Erro na conexão");

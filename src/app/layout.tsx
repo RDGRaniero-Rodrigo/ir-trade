@@ -1,20 +1,27 @@
-import type { ReactNode } from "react";
-import Sidebar from "@/components/dashboard/Sidebar";
-import { Header } from "@/components/dashboard/Header";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
 
-export default function DashboardLayout({
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+export const metadata: Metadata = {
+  title: "IR Trade",
+  description: "Sistema de gestão de operações",
+};
+
+export default function RootLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[#020b24] text-white">
-      <Sidebar />
-
-      <div className="flex min-h-screen flex-1 flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
-      </div>
-    </div>
+    <html lang="pt-BR">
+      <body className={`${inter.variable} font-sans antialiased`}>
+        {children}
+      </body>
+    </html>
   );
 }

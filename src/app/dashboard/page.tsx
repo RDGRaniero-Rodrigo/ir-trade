@@ -1,5 +1,5 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import {
   salvarNotaB3,
   salvarNotaForex,
@@ -12,7 +12,7 @@ import {
   type NotaB3Banco,
   type NotaForexBanco,
 } from "@/lib/supabase/notas";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,10 +118,7 @@ type StatusMensal =
   | "Prejuízo no mês"
   | "Zerado";
 
-type StatusDarf =
-  | "Preencher DARF"
-  | "Aguardar acumular"
-  | "Sem DARF no mês";
+type StatusDarf = "Preencher DARF" | "Aguardar acumular" | "Sem DARF no mês";
 
 type ResumoMensal = ResumoMensalBase & {
   prejuizoAcumuladoAnterior: number;
@@ -208,13 +205,10 @@ function parseDataPregao(data: string) {
 
 function normalizarDataForexParaCalculo(dataRelatorio: string) {
   const match = dataRelatorio.match(/^(\d{4})\.(\d{2})\.(\d{2})/);
-
   if (!match) return "";
-
   const ano = match[1];
   const mes = match[2];
   const dia = match[3];
-
   return `${ano}-${mes}-${dia}`;
 }
 
@@ -222,14 +216,11 @@ function formatarDataForexParaExibicao(dataRelatorio: string) {
   const match = dataRelatorio.match(
     /^(\d{4})\.(\d{2})\.(\d{2})(?:\s+(\d{2}:\d{2}))?$/
   );
-
   if (!match) return dataRelatorio;
-
   const ano = match[1];
   const mes = match[2];
   const dia = match[3];
   const hora = match[4] || "";
-
   return hora ? `${dia}/${mes}/${ano} ${hora}` : `${dia}/${mes}/${ano}`;
 }
 
@@ -243,19 +234,25 @@ function getPeriodoApuracao(mes: number, ano: number) {
 
 function getUltimoDiaUtilMesSeguinte(mes: number, ano: number) {
   const ultimoDiaMesSeguinte = new Date(ano, mes + 1, 0);
-
   while (
     ultimoDiaMesSeguinte.getDay() === 0 ||
     ultimoDiaMesSeguinte.getDay() === 6
   ) {
     ultimoDiaMesSeguinte.setDate(ultimoDiaMesSeguinte.getDate() - 1);
   }
-
   const dia = String(ultimoDiaMesSeguinte.getDate()).padStart(2, "0");
   const mesFmt = String(ultimoDiaMesSeguinte.getMonth() + 1).padStart(2, "0");
   const anoFmt = ultimoDiaMesSeguinte.getFullYear();
-
   return `${dia}/${mesFmt}/${anoFmt}`;
+}
+
+function getConfigFromStorage(): { mercado?: string } {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY_CONFIG) || "{}");
+  } catch {
+    return {};
+  }
 }
 
 function DarfMensagem({ mes }: { mes: ResumoMensal }) {
@@ -267,7 +264,6 @@ function DarfMensagem({ mes }: { mes: ResumoMensal }) {
       </div>
     );
   }
-
   if (mes.statusDarf === "Aguardar acumular") {
     return (
       <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200">
@@ -276,7 +272,6 @@ function DarfMensagem({ mes }: { mes: ResumoMensal }) {
       </div>
     );
   }
-
   return (
     <div className="rounded-lg border border-slate-700 bg-[#0c1d45] p-3 text-sm text-slate-300">
       Não há DARF a recolher neste mês.
@@ -350,7 +345,7 @@ function mapNotaForexBancoParaLocal(nota: NotaForexBanco): NotaForexSalva {
   };
 }
 
-export default function DashboardUploadPage() {
+function DashboardContent() {
   const searchParams = useSearchParams();
 
   const [file, setFile] = useState<File | null>(null);
@@ -377,15 +372,14 @@ export default function DashboardUploadPage() {
   >([]);
   const [indiceMesForexAtual, setIndiceMesForexAtual] = useState(0);
   const [carregandoResumoForex, setCarregandoResumoForex] = useState(false);
-
-  // Estados para controle da senha salva
-  const [senhaSalvaNoBanco, setSenhaSalvaNoBanco] = useState<string | null>(null);
+  const [senhaSalvaNoBanco, setSenhaSalvaNoBanco] = useState<string | null>(
+    null
+  );
   const [senhaJaVerificada, setSenhaJaVerificada] = useState(false);
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
   useEffect(() => {
     const aba = searchParams.get("aba");
-
     if (
       aba === "importar" ||
       aba === "mensal" ||
@@ -405,7 +399,6 @@ export default function DashboardUploadPage() {
           listarNotasB3(),
           listarNotasForex(),
         ]);
-
         setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
         setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
       } catch (error) {
@@ -414,32 +407,21 @@ export default function DashboardUploadPage() {
         setNotasForexSalvas([]);
       }
 
-      try {
-        const config = JSON.parse(
-          localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"
-        );
-
-        if (config.mercado === "forex") {
-          setMercadoSelecionado("forex");
-        } else {
-          setMercadoSelecionado("b3");
-        }
-      } catch {
+      const config = getConfigFromStorage();
+      if (config.mercado === "forex") {
+        setMercadoSelecionado("forex");
+      } else {
         setMercadoSelecionado("b3");
       }
     }
-
     carregarDadosIniciais();
   }, []);
 
-  // Carregar senha salva do banco quando o componente montar
   useEffect(() => {
     async function verificarSenhaSalva() {
       try {
         const senha = await buscarSenhaNotasB3();
         setSenhaSalvaNoBanco(senha);
-
-        // Se já tem senha salva, preenche automaticamente o campo
         if (senha) {
           setSenhaPdf(senha);
         }
@@ -449,7 +431,6 @@ export default function DashboardUploadPage() {
         setSenhaJaVerificada(true);
       }
     }
-
     verificarSenhaSalva();
   }, []);
 
@@ -460,10 +441,8 @@ export default function DashboardUploadPage() {
         setIndiceMesForexAtual(0);
         return;
       }
-
       try {
         setCarregandoResumoForex(true);
-
         const relatorios = notasForexSalvas.map((nota) => ({
           id: nota.id,
           data: normalizarDataForexParaCalculo(nota.dataRelatorio),
@@ -472,7 +451,6 @@ export default function DashboardUploadPage() {
           depositoRetirada: nota.depositoRetiradaUsd,
           saldoFinal: nota.saldoFinalUsd,
         }));
-
         const resultados = await calcularFechamentosMensaisForex(relatorios);
         setResumosMensaisForex(resultados);
         setIndiceMesForexAtual(0);
@@ -484,7 +462,6 @@ export default function DashboardUploadPage() {
         setCarregandoResumoForex(false);
       }
     }
-
     carregarResumoMensalForex();
   }, [notasForexSalvas]);
 
@@ -493,11 +470,9 @@ export default function DashboardUploadPage() {
 
   const resumoMensalBase = useMemo<ResumoMensalBase[]>(() => {
     const mapa = new Map<string, ResumoMensalBase>();
-
     for (const nota of notasSalvas) {
       const { mes, ano } = parseDataPregao(nota.dataPregao);
       const chave = `${ano}-${String(mes).padStart(2, "0")}`;
-
       if (!mapa.has(chave)) {
         mapa.set(chave, {
           chave,
@@ -511,7 +486,6 @@ export default function DashboardUploadPage() {
           liquido: 0,
         });
       }
-
       const item = mapa.get(chave)!;
       item.quantidade += 1;
       item.valorNegocios += nota.valorNegocios;
@@ -519,7 +493,6 @@ export default function DashboardUploadPage() {
       item.irrf += nota.irrf;
       item.liquido += getLiquidoAssinado(nota);
     }
-
     return Array.from(mapa.values())
       .map((item) => ({
         ...item,
@@ -536,10 +509,8 @@ export default function DashboardUploadPage() {
 
   const resumoMensal = useMemo<ResumoMensal[]>(() => {
     let prejuizoAcumulado = 0;
-
     const calculado = resumoMensalBase.map((item) => {
       const prejuizoAcumuladoAnterior = round2(prejuizoAcumulado);
-
       let baseTributavel = 0;
       let impostoEstimado = 0;
       let impostoAPagar = 0;
@@ -596,10 +567,8 @@ export default function DashboardUploadPage() {
 
   const resumoAnual = useMemo<ResumoAnual[]>(() => {
     const mapa = new Map<number, ResumoAnual>();
-
     for (const nota of notasSalvas) {
       const { ano } = parseDataPregao(nota.dataPregao);
-
       if (!mapa.has(ano)) {
         mapa.set(ano, {
           ano,
@@ -610,7 +579,6 @@ export default function DashboardUploadPage() {
           liquido: 0,
         });
       }
-
       const item = mapa.get(ano)!;
       item.quantidade += 1;
       item.valorNegocios += nota.valorNegocios;
@@ -618,7 +586,6 @@ export default function DashboardUploadPage() {
       item.irrf += nota.irrf;
       item.liquido += getLiquidoAssinado(nota);
     }
-
     return Array.from(mapa.values())
       .map((item) => ({
         ...item,
@@ -632,7 +599,6 @@ export default function DashboardUploadPage() {
 
   const resumoAnualForex = useMemo<ResumoAnualForex[]>(() => {
     const mapa = new Map<number, ResumoAnualForex>();
-
     for (const item of resumosMensaisForex) {
       if (!mapa.has(item.ano)) {
         mapa.set(item.ano, {
@@ -646,7 +612,6 @@ export default function DashboardUploadPage() {
           darfPagar: 0,
         });
       }
-
       const anual = mapa.get(item.ano)!;
       anual.quantidadeMeses += 1;
       anual.quantidadeRelatorios += item.quantidadeRelatorios;
@@ -656,7 +621,6 @@ export default function DashboardUploadPage() {
       anual.impostoEstimado += item.impostoEstimado;
       anual.darfPagar += item.darfPagar;
     }
-
     return Array.from(mapa.values())
       .map((item) => ({
         ...item,
@@ -674,7 +638,6 @@ export default function DashboardUploadPage() {
       setErro("Selecione um arquivo.");
       return;
     }
-
     try {
       setErro("");
       setStatus("processing");
@@ -683,44 +646,34 @@ export default function DashboardUploadPage() {
       setErrosValidacao([]);
       setAlertasValidacao([]);
 
-      const config = JSON.parse(
-        localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"
-      );
-
+      const config = getConfigFromStorage();
       const mercadoAtual: MercadoSelecionado =
         config.mercado === "forex" ? "forex" : "b3";
 
       if (mercadoAtual === "forex") {
         const nome = file.name.toLowerCase();
         const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
-
         let textoArquivo = "";
-
         if (ehEml) {
           textoArquivo = await file.text();
         } else {
           textoArquivo = await extrairTextoDoPDF(file);
         }
-
         const dadosForex = extrairDadosForex(textoArquivo);
-
         const jaExisteForex = notasForexSalvas.some(
           (nota) =>
             nota.dataRelatorio === dadosForex.dataRelatorio &&
             nota.conta === dadosForex.conta
         );
-
         setDadosExtraidosForex(dadosForex);
         setStatus(jaExisteForex ? "duplicate" : "preview");
         setAbaAtiva("importar");
         return;
       }
 
-      // ========== LÓGICA B3 COM SENHA AUTOMÁTICA ==========
       const senhaParaUsar = senhaPdf || undefined;
       const textoPdf = await extrairTextoDoPDF(file, senhaParaUsar);
       const dadosB3 = extrairDadosXP(textoPdf);
-
       const resultadoValidacao = validarNotaXP(dadosB3);
       setErrosValidacao(resultadoValidacao.erros);
       setAlertasValidacao(resultadoValidacao.alertas);
@@ -733,17 +686,13 @@ export default function DashboardUploadPage() {
         return;
       }
 
-      // ========== SALVAR SENHA NO BANCO SE FOR NOVA ==========
-      // Se a leitura deu certo E o usuário digitou uma senha E ela é diferente da salva
       if (senhaPdf && senhaPdf !== senhaSalvaNoBanco) {
         try {
           setSalvandoSenha(true);
           await salvarSenhaNotasB3(senhaPdf);
           setSenhaSalvaNoBanco(senhaPdf);
-          console.log("Senha salva no banco com sucesso!");
         } catch (error) {
           console.error("Erro ao salvar senha:", error);
-          // Não bloqueia o fluxo, apenas loga o erro
         } finally {
           setSalvandoSenha(false);
         }
@@ -754,7 +703,6 @@ export default function DashboardUploadPage() {
           nota.numeroNota === dadosB3.numeroNota &&
           nota.dataPregao === dadosB3.dataPregao
       );
-
       setDadosExtraidosB3(dadosB3);
       setStatus(jaExiste ? "duplicate" : "preview");
       setAbaAtiva("importar");
@@ -769,7 +717,6 @@ export default function DashboardUploadPage() {
 
   function handleLimpar() {
     setFile(null);
-    // Ao limpar, se tem senha salva, mantém ela no campo
     if (senhaSalvaNoBanco) {
       setSenhaPdf(senhaSalvaNoBanco);
     } else {
@@ -787,7 +734,6 @@ export default function DashboardUploadPage() {
   async function handleConfirmarImportacao() {
     if (mercadoSelecionado === "forex") {
       if (!dadosExtraidosForex) return;
-
       if (
         !dadosExtraidosForex.dataRelatorio ||
         !dadosExtraidosForex.conta ||
@@ -799,19 +745,16 @@ export default function DashboardUploadPage() {
         );
         return;
       }
-
       const jaExisteForex = notasForexSalvas.some(
         (nota) =>
           nota.dataRelatorio === dadosExtraidosForex.dataRelatorio &&
           nota.conta === dadosExtraidosForex.conta
       );
-
       if (jaExisteForex) {
         setStatus("duplicate");
         setErro("Esse relatório Forex já foi importado anteriormente.");
         return;
       }
-
       try {
         await salvarNotaForex({
           dataRelatorio: dadosExtraidosForex.dataRelatorio,
@@ -826,27 +769,8 @@ export default function DashboardUploadPage() {
           equityFinalUsd: dadosExtraidosForex.equityFinalUsd,
           floatingUsd: dadosExtraidosForex.floatingUsd,
         });
-
         const forexAtualizado = await listarNotasForex();
-
-        const notasForexConvertidas = forexAtualizado.map((nota) => ({
-          id: nota.id,
-          dataRelatorio: nota.data_relatorio ?? "",
-          conta: nota.conta ?? "",
-          cliente: nota.cliente ?? "",
-          moeda: nota.moeda ?? "",
-          ativoPrincipal: nota.ativo_principal,
-          saldoInicialUsd: Number(nota.saldo_inicial_usd ?? 0),
-          depositoRetiradaUsd: Number(nota.deposito_retirada_usd ?? 0),
-          resultadoDiaUsd: Number(nota.resultado_dia_usd ?? 0),
-          saldoFinalUsd: Number(nota.saldo_final_usd ?? 0),
-          equityFinalUsd: Number(nota.equity_final_usd ?? 0),
-          floatingUsd: Number(nota.floating_usd ?? 0),
-          createdAt: nota.created_at,
-        }));
-
-        setNotasForexSalvas(notasForexConvertidas);
-
+        setNotasForexSalvas(forexAtualizado.map(mapNotaForexBancoParaLocal));
         setStatus("success");
         setErro("");
         setFile(null);
@@ -864,7 +788,6 @@ export default function DashboardUploadPage() {
     }
 
     if (!dadosExtraidosB3) return;
-
     setErrosValidacao([]);
     setAlertasValidacao([]);
 
@@ -876,19 +799,16 @@ export default function DashboardUploadPage() {
       setErro("A nota não possui dados suficientes para ser salva.");
       return;
     }
-
     const jaExiste = notasSalvas.some(
       (nota) =>
         nota.numeroNota === dadosExtraidosB3.numeroNota &&
         nota.dataPregao === dadosExtraidosB3.dataPregao
     );
-
     if (jaExiste) {
       setStatus("duplicate");
       setErro("Essa nota já foi importada anteriormente.");
       return;
     }
-
     try {
       await salvarNotaB3({
         numeroNota: dadosExtraidosB3.numeroNota,
@@ -900,40 +820,11 @@ export default function DashboardUploadPage() {
         valorLiquido: dadosExtraidosB3.totalLiquidoNota,
         sinalLiquido: dadosExtraidosB3.sinalLiquido,
       });
-
       const b3Atualizado = await listarNotasB3();
-
-      const notasB3Convertidas = b3Atualizado.map((nota) => {
-        let dataPregao = "";
-
-        if (nota.data_pregao) {
-          const partes = nota.data_pregao.split("-");
-          if (partes.length === 3) {
-            const [ano, mes, dia] = partes;
-            dataPregao = `${dia}/${mes}/${ano}`;
-          }
-        }
-
-        return {
-          id: nota.id,
-          numeroNota: nota.numero_nota ?? "",
-          dataPregao,
-          cliente: nota.cliente ?? "",
-          valorNegocios: Number(nota.valor_negocios ?? 0),
-          irrf: Number(nota.irrf ?? 0),
-          custos: Number(nota.custos ?? 0),
-          valorLiquido: Number(nota.valor_liquido ?? 0),
-          sinalLiquido: nota.sinal_liquido,
-          createdAt: nota.created_at,
-        };
-      });
-
-      setNotasSalvas(notasB3Convertidas);
-
+      setNotasSalvas(b3Atualizado.map(mapNotaB3BancoParaLocal));
       setStatus("success");
       setErro("");
       setFile(null);
-      // Mantém a senha no campo se foi salva
       if (senhaSalvaNoBanco) {
         setSenhaPdf(senhaSalvaNoBanco);
       } else {
@@ -952,14 +843,12 @@ export default function DashboardUploadPage() {
   async function handleExcluirNota(id: string) {
     try {
       setErro("");
-
       if (mercadoSelecionado === "forex") {
         await excluirNotaForex(id);
         const atualizado = await listarNotasForex();
         setNotasForexSalvas(atualizado.map(mapNotaForexBancoParaLocal));
         return;
       }
-
       await excluirNotaB3(id);
       const atualizado = await listarNotasB3();
       setNotasSalvas(atualizado.map(mapNotaB3BancoParaLocal));
@@ -972,7 +861,6 @@ export default function DashboardUploadPage() {
   return (
     <div className="min-h-screen bg-[#020b24] text-white">
       <div className="mx-auto max-w-7xl px-5 py-6 md:px-6 md:py-7">
-
         <div className="mb-8 flex flex-wrap justify-center gap-3">
           <a
             href="/dashboard/upload"
@@ -984,7 +872,6 @@ export default function DashboardUploadPage() {
           >
             Importar Nota
           </a>
-
           <a
             href="/dashboard/upload?aba=mensal"
             className={`inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition ${
@@ -995,7 +882,6 @@ export default function DashboardUploadPage() {
           >
             Resumo Mensal
           </a>
-
           <a
             href="/dashboard/upload?aba=anual"
             className={`inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition ${
@@ -1006,7 +892,6 @@ export default function DashboardUploadPage() {
           >
             Resumo Anual
           </a>
-
           <a
             href="/dashboard/upload?aba=notas"
             className={`inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition ${
@@ -1066,7 +951,6 @@ export default function DashboardUploadPage() {
                       </span>
                     )}
                   </div>
-
                   <div className="relative">
                     <Input
                       type={mostrarSenha ? "text" : "password"}
@@ -1079,7 +963,6 @@ export default function DashboardUploadPage() {
                       }
                       className="h-10 rounded-lg border-slate-700 bg-[#0c1d45] pr-10 text-sm text-white"
                     />
-
                     <button
                       type="button"
                       onClick={() => setMostrarSenha((v) => !v)}
@@ -1088,10 +971,10 @@ export default function DashboardUploadPage() {
                       {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-
                   {senhaJaVerificada && !senhaSalvaNoBanco && (
                     <p className="mt-1.5 text-xs text-slate-400">
-                      A senha será salva automaticamente após o primeiro upload bem-sucedido.
+                      A senha será salva automaticamente após o primeiro upload
+                      bem-sucedido.
                     </p>
                   )}
                 </div>
@@ -1130,7 +1013,6 @@ export default function DashboardUploadPage() {
                     "Ler Arquivo"
                   )}
                 </Button>
-
                 <Button
                   variant="outline"
                   onClick={handleLimpar}
@@ -1154,8 +1036,8 @@ export default function DashboardUploadPage() {
                   {status === "duplicate" && (
                     <div className="mt-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-300">
                       {mercadoSelecionado === "b3"
-                        ? "Essa nota já foi importada anteriormente. Você pode conferir os dados abaixo, mas ela não será salva novamente."
-                        : "Esse relatório Forex já foi importado anteriormente. Você pode conferir os dados abaixo, mas ele não será salvo novamente."}
+                        ? "Essa nota já foi importada anteriormente."
+                        : "Esse relatório Forex já foi importado anteriormente."}
                     </div>
                   )}
 
@@ -1176,7 +1058,9 @@ export default function DashboardUploadPage() {
                       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
                         <CardResumoValor
                           titulo="Número da Nota"
-                          valor={dadosExtraidosB3.numeroNota ?? "Não identificado"}
+                          valor={
+                            dadosExtraidosB3.numeroNota ?? "Não identificado"
+                          }
                         />
                         <CardResumoValor
                           titulo="Código Cliente"
@@ -1184,10 +1068,11 @@ export default function DashboardUploadPage() {
                         />
                         <CardResumoValor
                           titulo="Data do Pregão"
-                          valor={dadosExtraidosB3.dataPregao ?? "Não identificado"}
+                          valor={
+                            dadosExtraidosB3.dataPregao ?? "Não identificado"
+                          }
                         />
                       </div>
-
                       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                         <CardResumoValor
                           titulo="Valor dos Negócios"
@@ -1223,11 +1108,15 @@ export default function DashboardUploadPage() {
                       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
                         <CardResumoValor
                           titulo="Conta"
-                          valor={dadosExtraidosForex.conta ?? "Não identificada"}
+                          valor={
+                            dadosExtraidosForex.conta ?? "Não identificada"
+                          }
                         />
                         <CardResumoValor
                           titulo="Cliente"
-                          valor={dadosExtraidosForex.cliente ?? "Não identificado"}
+                          valor={
+                            dadosExtraidosForex.cliente ?? "Não identificado"
+                          }
                         />
                         <CardResumoValor
                           titulo="Data do relatório"
@@ -1237,7 +1126,6 @@ export default function DashboardUploadPage() {
                           }
                         />
                       </div>
-
                       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <CardResumoValor
                           titulo="Ativo principal"
@@ -1248,7 +1136,9 @@ export default function DashboardUploadPage() {
                         />
                         <CardResumoValor
                           titulo="Moeda"
-                          valor={dadosExtraidosForex.moeda ?? "Não identificada"}
+                          valor={
+                            dadosExtraidosForex.moeda ?? "Não identificada"
+                          }
                         />
                         <CardResumoValor
                           titulo="Saldo inicial (USD)"
@@ -1319,7 +1209,6 @@ export default function DashboardUploadPage() {
                     >
                       Cancelar
                     </Button>
-
                     {status !== "duplicate" && (
                       <Button
                         onClick={handleConfirmarImportacao}
@@ -1350,7 +1239,6 @@ export default function DashboardUploadPage() {
                       />
                     </svg>
                   </div>
-
                   <div>
                     <p className="text-base font-semibold md:text-lg">
                       Importação confirmada
@@ -1378,7 +1266,6 @@ export default function DashboardUploadPage() {
                 preenchimento guiado da DARF.
               </p>
             </div>
-
             <div className="mt-5 space-y-4">
               {resumoMensal.length === 0 ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -1397,7 +1284,6 @@ export default function DashboardUploadPage() {
                           {mes.quantidade} nota(s) importada(s)
                         </p>
                       </div>
-
                       <div className="text-left md:text-right">
                         <p className="text-xs text-slate-300 md:text-sm">
                           Resultado líquido do mês
@@ -1414,7 +1300,6 @@ export default function DashboardUploadPage() {
                         </p>
                       </div>
                     </div>
-
                     <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <CardResumoValor
                         titulo="Valor dos negócios"
@@ -1443,9 +1328,7 @@ export default function DashboardUploadPage() {
                         titulo="Prejuízo acumulado final"
                         valor={formatarMoeda(mes.prejuizoAcumuladoFinal)}
                         destaque={
-                          mes.prejuizoAcumuladoFinal > 0
-                            ? "negativo"
-                            : "normal"
+                          mes.prejuizoAcumuladoFinal > 0 ? "negativo" : "normal"
                         }
                       />
                       <CardResumoValor
@@ -1456,20 +1339,16 @@ export default function DashboardUploadPage() {
                       <CardResumoValor
                         titulo="Imposto a pagar"
                         valor={formatarMoeda(mes.impostoAPagar)}
-                        destaque={
-                          mes.impostoAPagar > 0 ? "positivo" : "normal"
-                        }
+                        destaque={mes.impostoAPagar > 0 ? "positivo" : "normal"}
                       />
                       <CardResumoValor
                         titulo="Notas"
                         valor={String(mes.quantidade)}
                       />
                     </div>
-
                     <div className="mt-4">
                       <DarfMensagem mes={mes} />
                     </div>
-
                     <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                       <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                         <div className="flex items-center gap-3">
@@ -1485,7 +1364,6 @@ export default function DashboardUploadPage() {
                             </p>
                           </div>
                         </div>
-
                         <div className="mt-4 space-y-2">
                           <div className="flex items-center justify-between rounded-lg bg-[#0c1d45] px-3 py-2.5">
                             <span className="text-xs text-slate-300 md:text-sm">
@@ -1495,7 +1373,6 @@ export default function DashboardUploadPage() {
                               {mes.codigoReceita}
                             </span>
                           </div>
-
                           <div className="flex items-center justify-between rounded-lg bg-[#0c1d45] px-3 py-2.5">
                             <span className="text-xs text-slate-300 md:text-sm">
                               Período de apuração
@@ -1504,7 +1381,6 @@ export default function DashboardUploadPage() {
                               {mes.periodoApuracao}
                             </span>
                           </div>
-
                           <div className="flex items-center justify-between rounded-lg bg-[#0c1d45] px-3 py-2.5">
                             <span className="text-xs text-slate-300 md:text-sm">
                               Vencimento
@@ -1513,7 +1389,6 @@ export default function DashboardUploadPage() {
                               {mes.vencimentoDarf}
                             </span>
                           </div>
-
                           <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
                             <span className="text-xs text-emerald-200 md:text-sm">
                               Valor principal
@@ -1523,7 +1398,6 @@ export default function DashboardUploadPage() {
                             </span>
                           </div>
                         </div>
-
                         <div className="mt-4 flex flex-wrap gap-3">
                           <a
                             href={SICALC_URL}
@@ -1536,7 +1410,6 @@ export default function DashboardUploadPage() {
                           </a>
                         </div>
                       </div>
-
                       <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                         <div className="flex items-center gap-3">
                           <div className="rounded-full bg-violet-500/10 p-2 text-violet-300">
@@ -1551,7 +1424,6 @@ export default function DashboardUploadPage() {
                             </p>
                           </div>
                         </div>
-
                         <ol className="mt-4 list-decimal space-y-2 pl-5 text-xs text-slate-200 md:text-sm">
                           <li>Acesse o SicalcWeb pelo botão ao lado.</li>
                           <li>Entre na opção de preenchimento da DARF.</li>
@@ -1570,7 +1442,6 @@ export default function DashboardUploadPage() {
                           <li>Confira os dados pessoais do contribuinte.</li>
                           <li>Gere a DARF oficial no portal da Receita.</li>
                         </ol>
-
                         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                           <div className="rounded-lg bg-[#0c1d45] p-3">
                             <div className="flex items-center gap-2 text-cyan-300">
@@ -1583,7 +1454,6 @@ export default function DashboardUploadPage() {
                               {mes.periodoApuracao}
                             </p>
                           </div>
-
                           <div className="rounded-lg bg-[#0c1d45] p-3">
                             <div className="flex items-center gap-2 text-emerald-300">
                               <FileText className="h-4 w-4" />
@@ -1615,7 +1485,6 @@ export default function DashboardUploadPage() {
                   DARF.
                 </p>
               </div>
-
               {!carregandoResumoForex && resumosMensaisForex.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Button
@@ -1628,11 +1497,9 @@ export default function DashboardUploadPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-
                   <div className="rounded-lg bg-[#0c1d45] px-4 py-2 text-sm text-white">
                     {indiceMesForexAtual + 1} de {resumosMensaisForex.length}
                   </div>
-
                   <Button
                     variant="outline"
                     onClick={() =>
@@ -1650,7 +1517,6 @@ export default function DashboardUploadPage() {
                 </div>
               )}
             </div>
-
             <div className="mt-5 space-y-4">
               {carregandoResumoForex ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -1671,11 +1537,10 @@ export default function DashboardUploadPage() {
                         {resumoMensalForexAtual.mes}
                       </p>
                       <p className="mt-1 text-sm text-slate-300">
-                        {resumoMensalForexAtual.quantidadeRelatorios} relatório(s)
-                        importado(s)
+                        {resumoMensalForexAtual.quantidadeRelatorios}{" "}
+                        relatório(s) importado(s)
                       </p>
                     </div>
-
                     <div className="text-left md:text-right">
                       <p className="text-xs text-slate-300 md:text-sm">
                         Resultado do mês (BRL)
@@ -1693,7 +1558,6 @@ export default function DashboardUploadPage() {
                       </p>
                     </div>
                   </div>
-
                   <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <CardResumoValor
                       titulo="Resultado do mês (USD)"
@@ -1755,7 +1619,6 @@ export default function DashboardUploadPage() {
                       }
                     />
                   </div>
-
                   <div className="mt-4">
                     {resumoMensalForexAtual.possuiImposto ? (
                       <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
@@ -1767,7 +1630,6 @@ export default function DashboardUploadPage() {
                       </div>
                     )}
                   </div>
-
                   <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                     <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                       <div className="flex items-center gap-3">
@@ -1783,7 +1645,6 @@ export default function DashboardUploadPage() {
                           </p>
                         </div>
                       </div>
-
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center justify-between rounded-lg bg-[#0c1d45] px-3 py-2.5">
                           <span className="text-xs text-slate-300 md:text-sm">
@@ -1793,7 +1654,6 @@ export default function DashboardUploadPage() {
                             {CODIGO_DARF_FOREX}
                           </span>
                         </div>
-
                         <div className="flex items-center justify-between rounded-lg bg-[#0c1d45] px-3 py-2.5">
                           <span className="text-xs text-slate-300 md:text-sm">
                             Período de apuração
@@ -1806,7 +1666,6 @@ export default function DashboardUploadPage() {
                             /{resumoMensalForexAtual.ano}
                           </span>
                         </div>
-
                         <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
                           <span className="text-xs text-emerald-200 md:text-sm">
                             Valor principal
@@ -1816,7 +1675,6 @@ export default function DashboardUploadPage() {
                           </span>
                         </div>
                       </div>
-
                       <div className="mt-4 flex flex-wrap gap-3">
                         <a
                           href={SICALC_URL}
@@ -1829,7 +1687,6 @@ export default function DashboardUploadPage() {
                         </a>
                       </div>
                     </div>
-
                     <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                       <div className="flex items-center gap-3">
                         <div className="rounded-full bg-violet-500/10 p-2 text-violet-300">
@@ -1844,7 +1701,6 @@ export default function DashboardUploadPage() {
                           </p>
                         </div>
                       </div>
-
                       <ol className="mt-4 list-decimal space-y-2 pl-5 text-xs text-slate-200 md:text-sm">
                         <li>Acesse o SicalcWeb pelo botão ao lado.</li>
                         <li>Entre na opção de preenchimento da DARF.</li>
@@ -1891,7 +1747,6 @@ export default function DashboardUploadPage() {
                 Consolidado anual das notas salvas.
               </p>
             </div>
-
             <div className="mt-5 space-y-4">
               {resumoAnual.length === 0 ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -1909,7 +1764,6 @@ export default function DashboardUploadPage() {
                         {ano.quantidade} nota(s) importada(s)
                       </p>
                     </div>
-
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <CardResumoValor
                         titulo="Valor dos negócios"
@@ -1948,7 +1802,6 @@ export default function DashboardUploadPage() {
                 Consolidado anual dos meses Forex calculados com PTAX.
               </p>
             </div>
-
             <div className="mt-5 space-y-4">
               {resumoAnualForex.length === 0 ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -1968,7 +1821,6 @@ export default function DashboardUploadPage() {
                           {ano.quantidadeRelatorios} relatório(s)
                         </p>
                       </div>
-
                       <div className="text-left md:text-right">
                         <p className="text-xs text-slate-300 md:text-sm">
                           Resultado anual (BRL)
@@ -1984,7 +1836,6 @@ export default function DashboardUploadPage() {
                         </p>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <CardResumoValor
                         titulo="Resultado anual (USD)"
@@ -2051,7 +1902,6 @@ export default function DashboardUploadPage() {
                 Histórico das notas B3 salvas no banco.
               </p>
             </div>
-
             <div className="mt-5 space-y-3">
               {notasSalvas.length === 0 ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -2073,23 +1923,17 @@ export default function DashboardUploadPage() {
                           titulo="Data do pregão"
                           valor={formatarData(nota.dataPregao)}
                         />
-                        <CardResumoValor
-                          titulo="Cliente"
-                          valor={nota.cliente}
-                        />
+                        <CardResumoValor titulo="Cliente" valor={nota.cliente} />
                         <CardResumoValor
                           titulo="Valor líquido"
                           valor={`${
                             nota.sinalLiquido === "D" ? "-" : ""
                           }${formatarMoeda(nota.valorLiquido)}`}
                           destaque={
-                            nota.sinalLiquido === "D"
-                              ? "negativo"
-                              : "positivo"
+                            nota.sinalLiquido === "D" ? "negativo" : "positivo"
                           }
                         />
                       </div>
-
                       <Button
                         variant="outline"
                         onClick={() => handleExcluirNota(nota.id)}
@@ -2116,7 +1960,6 @@ export default function DashboardUploadPage() {
                 Histórico dos relatórios Forex salvos no banco.
               </p>
             </div>
-
             <div className="mt-5 space-y-3">
               {notasForexSalvas.length === 0 ? (
                 <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-4 text-sm text-slate-300">
@@ -2180,7 +2023,6 @@ export default function DashboardUploadPage() {
                           }
                         />
                       </div>
-
                       <Button
                         variant="outline"
                         onClick={() => handleExcluirNota(nota.id)}
@@ -2198,5 +2040,22 @@ export default function DashboardUploadPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#020b24] text-white">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+            <span>Carregando...</span>
+          </div>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

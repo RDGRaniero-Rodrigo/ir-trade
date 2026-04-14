@@ -1,8 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
+  const [usuarioLogado, setUsuarioLogado] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+
+  useEffect(() => {
+    async function verificarSessao() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getSession();
+        setUsuarioLogado(!!data.session);
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
+        setUsuarioLogado(false);
+      } finally {
+        setVerificando(false);
+      }
+    }
+    verificarSessao();
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#020b24] text-white">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center">
@@ -20,19 +41,23 @@ export default function HomePage() {
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <Link
-            href="/login"
-            className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
-          >
-            Entrar
-          </Link>
+          {!verificando && !usuarioLogado && (
+            <Link
+              href="/login"
+              className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+            >
+              Entrar
+            </Link>
+          )}
 
-          <Link
-            href="/dashboard"
-            className="rounded-xl border border-slate-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Ir para dashboard
-          </Link>
+          {!verificando && usuarioLogado && (
+            <Link
+              href="/dashboard"
+              className="rounded-xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+            >
+              Ir para dashboard
+            </Link>
+          )}
         </div>
       </div>
     </main>

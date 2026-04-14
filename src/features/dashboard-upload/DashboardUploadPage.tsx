@@ -392,23 +392,38 @@ export default function DashboardUploadPage() {
   }, [searchParams]);
 
   useEffect(() => {
-  async function carregarDadosIniciais() {
-    try {
-      const [b3, forex] = await Promise.all([
-        listarNotasB3(),
-        listarNotasForex(),
-      ]);
+    async function carregarDadosIniciais() {
+      try {
+        const [b3, forex] = await Promise.all([
+          listarNotasB3(),
+          listarNotasForex(),
+        ]);
 
-      setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
-      setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
-    } catch (error) {
-      console.error("Erro ao carregar notas do banco:", error);
-      setNotasSalvas([]);
-      setNotasForexSalvas([]);
+        setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
+        setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
+      } catch (error) {
+        console.error("Erro ao carregar notas do banco:", error);
+        setNotasSalvas([]);
+        setNotasForexSalvas([]);
+      }
+
+      try {
+        const config = JSON.parse(
+          localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"
+        );
+
+        if (config.mercado === "forex") {
+          setMercadoSelecionado("forex");
+        } else {
+          setMercadoSelecionado("b3");
+        }
+      } catch {
+        setMercadoSelecionado("b3");
+      }
     }
 
-  carregarDadosIniciais();
-}, []);
+    carregarDadosIniciais();
+  }, []);
 
   useEffect(() => {
     async function carregarResumoMensalForex() {
@@ -627,79 +642,10 @@ export default function DashboardUploadPage() {
   }, [resumosMensaisForex]);
 
   async function handleLerArquivo() {
-  if (!file) {
-    setErro("Selecione um arquivo.");
-    return;
-  }
-
-  try {
-    setErro("");
-    setStatus("processing");
-    setDadosExtraidosB3(null);
-    setDadosExtraidosForex(null);
-    setErrosValidacao([]);
-    setAlertasValidacao([]);
-
-    const mercadoAtual = mercadoSelecionado;
-
-    if (mercadoAtual === "forex") {
-      const nome = file.name.toLowerCase();
-      const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
-
-      let textoArquivo = "";
-
-      if (ehEml) {
-        textoArquivo = await file.text();
-      } else {
-        textoArquivo = await extrairTextoDoPDF(file);
-      }
-
-      const dadosForex = extrairDadosForex(textoArquivo);
-
-      const jaExisteForex = notasForexSalvas.some(
-        (nota) =>
-          nota.dataRelatorio === dadosForex.dataRelatorio &&
-          nota.conta === dadosForex.conta
-      );
-
-      setDadosExtraidosForex(dadosForex);
-      setStatus(jaExisteForex ? "duplicate" : "preview");
-      setAbaAtiva("importar");
+    if (!file) {
+      setErro("Selecione um arquivo.");
       return;
     }
-
-    const textoPdf = await extrairTextoDoPDF(file, senhaPdf || undefined);
-    const dadosB3 = extrairDadosXP(textoPdf);
-
-    const resultadoValidacao = validarNotaXP(dadosB3);
-    setErrosValidacao(resultadoValidacao.erros);
-    setAlertasValidacao(resultadoValidacao.alertas);
-
-    if (!resultadoValidacao.valido) {
-      setErro(
-        "Não foi possível validar a nota. Revise os campos identificados."
-      );
-      setStatus("idle");
-      return;
-    }
-
-    const jaExiste = notasSalvas.some(
-      (nota) =>
-        nota.numeroNota === dadosB3.numeroNota &&
-        nota.dataPregao === dadosB3.dataPregao
-    );
-
-    setDadosExtraidosB3(dadosB3);
-    setStatus(jaExiste ? "duplicate" : "preview");
-    setAbaAtiva("importar");
-  } catch (error) {
-    console.error(error);
-    setErro(
-      "Não foi possível ler o arquivo. Verifique o formato e tente novamente."
-    );
-    setStatus("idle");
-  }
-}
 
     try {
       setErro("");
@@ -709,7 +655,12 @@ export default function DashboardUploadPage() {
       setErrosValidacao([]);
       setAlertasValidacao([]);
 
-      const mercadoAtual = mercadoSelecionado;
+      const config = JSON.parse(
+        localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"
+      );
+
+      const mercadoAtual: MercadoSelecionado =
+        config.mercado === "forex" ? "forex" : "b3";
 
       if (mercadoAtual === "forex") {
         const nome = file.name.toLowerCase();
@@ -964,7 +915,8 @@ export default function DashboardUploadPage() {
 
   return (
     <div className="min-h-screen bg-[#020b24] text-white">
-      <div className="mx-auto max-w-7xl px-6 py-6 md:px-6 md:py-7 md:px-7">
+      <div className="mx-auto max-w-7xl px-5 py-6 md:px-6 md:py-7">
+
         <div className="mb-8 flex flex-wrap justify-center gap-3">
           <a
             href="/dashboard/upload"
@@ -1017,23 +969,6 @@ export default function DashboardUploadPage() {
               Upload
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
-              
-              <div className="flex gap-3 mb-6">
-  <Button
-    onClick={() => setMercadoSelecionado("b3")}
-    variant={mercadoSelecionado === "b3" ? "default" : "outline"}
-  >
-    B3
-  </Button>
-
-  <Button
-    onClick={() => setMercadoSelecionado("forex")}
-    variant={mercadoSelecionado === "forex" ? "default" : "outline"}
-  >
-    Forex
-  </Button>
-</div>
-
               Upload de Nota
             </h1>
             <p className="mt-1 text-sm text-slate-300 md:text-base">

@@ -110,6 +110,7 @@ export async function listarNotasForex() {
 
   return (data ?? []) as NotaForexBanco[];
 }
+
 function converterDataBRParaISO(data: string) {
   if (!data) return null;
 
@@ -119,6 +120,7 @@ function converterDataBRParaISO(data: string) {
   const [dia, mes, ano] = partes;
   return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 }
+
 export async function salvarNotaB3(nota: NotaB3Insert) {
   const supabase = createClient();
   const user = await getUsuarioAtual();
@@ -142,9 +144,9 @@ export async function salvarNotaB3(nota: NotaB3Insert) {
     .single();
 
   if (error) {
-  console.error("Erro Supabase salvarNotaB3:", error);
-  throw new Error(error.message);
-}
+    console.error("Erro Supabase salvarNotaB3:", error);
+    throw new Error(error.message);
+  }
 
   return data as NotaB3Banco;
 }
@@ -208,5 +210,42 @@ export async function excluirNotaForex(id: string) {
 
   if (error) {
     throw new Error(error.message);
+  }
+}
+
+// ============================================
+// FUNÇÕES PARA GERENCIAR SENHA DO PROFILES
+// ============================================
+
+export async function buscarSenhaNotasB3(): Promise<string | null> {
+  const supabase = createClient();
+  const user = await getUsuarioAtual();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("senha_notas_b3")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Erro ao buscar senha:", error);
+    return null;
+  }
+
+  return data?.senha_notas_b3 ?? null;
+}
+
+export async function salvarSenhaNotasB3(senha: string): Promise<void> {
+  const supabase = createClient();
+  const user = await getUsuarioAtual();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ senha_notas_b3: senha })
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("Erro ao salvar senha:", error);
+    throw new Error("Não foi possível salvar a senha.");
   }
 }

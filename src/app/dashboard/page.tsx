@@ -13,8 +13,6 @@ import {
   type ResumoMensalForex,
 } from "@/lib/calculo-forex";
 import {
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   TrendingUp,
   TrendingDown,
@@ -43,6 +41,7 @@ type ResumoMensal = {
   ano: number;
   mes: number;
   label: string;
+  labelCurto: string;
   quantidade: number;
   valorNegocios: number;
   custos: number;
@@ -61,6 +60,11 @@ const ALIQUOTA_DAY_TRADE = 0.2;
 const NOMES_MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+const NOMES_MESES_CURTOS = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 ];
 
 function formatarMoeda(valor: number) {
@@ -161,7 +165,7 @@ export default function DashboardHomePage() {
   const [carregando, setCarregando] = useState(true);
   const [notasB3, setNotasB3] = useState<NotaSalva[]>([]);
   const [resumosForex, setResumosForex] = useState<ResumoMensalForex[]>([]);
-  const [indiceMesSelecionado, setIndiceMesSelecionado] = useState(0);
+  const [chaveMesSelecionado, setChaveMesSelecionado] = useState<string | null>(null);
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -216,6 +220,7 @@ export default function DashboardHomePage() {
           ano,
           mes,
           label: `${NOMES_MESES[mes - 1]} ${ano}`,
+          labelCurto: `${NOMES_MESES_CURTOS[mes - 1]}/${ano}`,
           quantidade: 0,
           valorNegocios: 0,
           custos: 0,
@@ -272,26 +277,35 @@ export default function DashboardHomePage() {
     return ordenado.reverse();
   }, [notasB3]);
 
-  // Mês selecionado
-  const mesSelecionadoB3 = resumosMensaisB3[indiceMesSelecionado] || null;
-  const mesSelecionadoForex = resumosForex[indiceMesSelecionado] || null;
+  // Selecionar o mês mais recente automaticamente
+  useEffect(() => {
+    if (mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && !chaveMesSelecionado) {
+      setChaveMesSelecionado(resumosMensaisB3[0].chave);
+    }
+    if (mercadoSelecionado === "forex" && resumosForex.length > 0 && !chaveMesSelecionado) {
+      setChaveMesSelecionado(resumosForex[0].chave);
+    }
+  }, [mercadoSelecionado, resumosMensaisB3, resumosForex, chaveMesSelecionado]);
 
-  const totalMeses = mercadoSelecionado === "b3" 
-    ? resumosMensaisB3.length 
-    : resumosForex.length;
+  // Mês selecionado
+  const mesSelecionadoB3 = resumosMensaisB3.find((m) => m.chave === chaveMesSelecionado) || resumosMensaisB3[0] || null;
+  const mesSelecionadoForex = resumosForex.find((m) => m.chave === chaveMesSelecionado) || resumosForex[0] || null;
 
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
     setConfigToStorage(mercado);
-    setIndiceMesSelecionado(0);
+    // Selecionar primeiro mês do novo mercado
+    if (mercado === "b3" && resumosMensaisB3.length > 0) {
+      setChaveMesSelecionado(resumosMensaisB3[0].chave);
+    } else if (mercado === "forex" && resumosForex.length > 0) {
+      setChaveMesSelecionado(resumosForex[0].chave);
+    } else {
+      setChaveMesSelecionado(null);
+    }
   }
 
-  function handleMesAnterior() {
-    setIndiceMesSelecionado((atual) => Math.min(totalMeses - 1, atual + 1));
-  }
-
-  function handleMesProximo() {
-    setIndiceMesSelecionado((atual) => Math.max(0, atual - 1));
+  function handleSelecionarMes(chave: string) {
+    setChaveMesSelecionado(chave);
   }
 
   if (carregando) {
@@ -346,50 +360,67 @@ export default function DashboardHomePage() {
         </Button>
       </div>
 
+      {/* Seletor de Meses */}
+      {mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
+          <div className="flex flex-wrap gap-2">
+            {resumosMensaisB3.map((mes) => (
+              <Button
+                key={mes.chave}
+                onClick={() => handleSelecionarMes(mes.chave)}
+                className={`h-10 rounded-lg px-4 text-sm font-medium transition ${
+                  chaveMesSelecionado === mes.chave
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                    : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                }`}
+              >
+                {mes.labelCurto}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mercadoSelecionado === "forex" && resumosForex.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
+          <div className="flex flex-wrap gap-2">
+            {resumosForex.map((mes) => (
+              <Button
+                key={mes.chave}
+                onClick={() => handleSelecionarMes(mes.chave)}
+                className={`h-10 rounded-lg px-4 text-sm font-medium transition ${
+                  chaveMesSelecionado === mes.chave
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                    : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                }`}
+              >
+                {mes.mes}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Card de Resumo do Mês */}
       <div className="rounded-[20px] border border-slate-800 bg-[#061538] p-5 md:p-6">
-        {/* Navegação de Meses */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold md:text-2xl">
-              {mercadoSelecionado === "b3"
-                ? mesSelecionadoB3?.label || "Nenhum mês disponível"
-                : mesSelecionadoForex?.mes || "Nenhum mês disponível"}
-            </h2>
-            <p className="mt-1 text-sm text-slate-300">
-              {mercadoSelecionado === "b3"
-                ? mesSelecionadoB3
-                  ? `${mesSelecionadoB3.quantidade} nota(s) importada(s)`
-                  : "Importe suas notas para ver o resumo"
-                : mesSelecionadoForex
-                ? `${mesSelecionadoForex.quantidadeRelatorios} relatório(s) importado(s)`
-                : "Importe seus relatórios para ver o resumo"}
-            </p>
-          </div>
-
-          {totalMeses > 0 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={handleMesAnterior}
-                disabled={indiceMesSelecionado >= totalMeses - 1}
-                className="h-10 rounded-lg border-slate-600 bg-transparent px-3 text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="rounded-lg bg-[#0c1d45] px-4 py-2 text-sm text-white">
-                {indiceMesSelecionado + 1} de {totalMeses}
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleMesProximo}
-                disabled={indiceMesSelecionado === 0}
-                className="h-10 rounded-lg border-slate-600 bg-transparent px-3 text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+        {/* Título do Mês */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold md:text-2xl">
+            {mercadoSelecionado === "b3"
+              ? mesSelecionadoB3?.label || "Nenhum mês disponível"
+              : mesSelecionadoForex?.mes || "Nenhum mês disponível"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-300">
+            {mercadoSelecionado === "b3"
+              ? mesSelecionadoB3
+                ? `${mesSelecionadoB3.quantidade} nota(s) importada(s)`
+                : "Importe suas notas para ver o resumo"
+              : mesSelecionadoForex
+              ? `${mesSelecionadoForex.quantidadeRelatorios} relatório(s) importado(s)`
+              : "Importe seus relatórios para ver o resumo"}
+          </p>
         </div>
 
         {/* Conteúdo B3 */}

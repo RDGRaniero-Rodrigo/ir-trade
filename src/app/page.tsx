@@ -8,14 +8,17 @@ export default function HomePage() {
 
   useEffect(() => {
     const testar = async () => {
-      const supabase = createClient();
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from("test").select("*").limit(1);
 
-      const { error } = await supabase.from("test").select("*").limit(1);
-
-      if (error) {
+        if (error) {
+          setStatus("Erro na conexão");
+        } else {
+          setStatus("Conectado com sucesso");
+        }
+      } catch {
         setStatus("Erro na conexão");
-      } else {
-        setStatus("Conectado com sucesso");
       }
     };
 

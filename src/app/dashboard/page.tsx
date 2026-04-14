@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
-import DashboardHomePage from "@/features/dashboard-home/DashboardHomePage";
+import DashboardUploadPage from "@/features/dashboard-upload/DashboardUploadPage";
 
-export default function DashboardPage() {
-  return <DashboardHomePage />;
+export default function Page() {
+  return <DashboardUploadPage />;
 }

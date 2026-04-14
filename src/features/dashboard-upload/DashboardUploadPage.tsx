@@ -392,38 +392,42 @@ export default function DashboardUploadPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    async function carregarDadosIniciais() {
-      try {
-        const [b3, forex] = await Promise.all([
-          listarNotasB3(),
-          listarNotasForex(),
-        ]);
+  async function carregarDadosIniciais() {
+    try {
+      const [b3, forex] = await Promise.all([
+        listarNotasB3(),
+        listarNotasForex(),
+      ]);
 
-        setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
-        setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
-      } catch (error) {
-        console.error("Erro ao carregar notas do banco:", error);
-        setNotasSalvas([]);
-        setNotasForexSalvas([]);
-      }
+      setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
+      setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
+    } catch (error) {
+      console.error("Erro ao carregar notas do banco:", error);
+      setNotasSalvas([]);
+      setNotasForexSalvas([]);
+    }
 
+    let config: { mercado?: string } = {};
+
+    if (typeof window !== "undefined") {
       try {
-        const config = JSON.parse(
+        config = JSON.parse(
           localStorage.getItem(STORAGE_KEY_CONFIG) || "{}"
         );
-
-        if (config.mercado === "forex") {
-          setMercadoSelecionado("forex");
-        } else {
-          setMercadoSelecionado("b3");
-        }
       } catch {
-        setMercadoSelecionado("b3");
+        config = {};
       }
     }
 
-    carregarDadosIniciais();
-  }, []);
+    if (config.mercado === "forex") {
+      setMercadoSelecionado("forex");
+    } else {
+      setMercadoSelecionado("b3");
+    }
+  }
+
+  carregarDadosIniciais();
+}, []);
 
   useEffect(() => {
     async function carregarResumoMensalForex() {

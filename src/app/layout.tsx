@@ -1,15 +1,20 @@
-import "./globals.css";
+import type { ReactNode } from "react";
+import Sidebar from "@/components/dashboard/Sidebar";
+import { Header } from "@/components/dashboard/Header";
 
-export const dynamic = "force-dynamic";
-
-export default function RootLayout({
+export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
-    </html>
+    <div className="flex min-h-screen bg-[#020b24] text-white">
+      <Sidebar />
+
+      <div className="flex min-h-screen flex-1 flex-col">
+        <Header />
+        <main className="flex-1">{children}</main>
+      </div>
+    </div>
   );
 }

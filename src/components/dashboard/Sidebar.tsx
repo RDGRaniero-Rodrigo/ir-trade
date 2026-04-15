@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Overlay escuro no mobile quando sidebar está aberta */}
+      {/* Overlay escuro no mobile */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
@@ -56,35 +56,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] flex-col 
+          fixed inset-y-0 left-0 z-50 flex h-screen w-[200px] flex-col 
           border-r border-slate-800 bg-[#08142f] text-white
           transform transition-transform duration-300 ease-in-out
-          lg:static lg:translate-x-0
+          lg:static lg:translate-x-0 lg:w-[180px]
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         {/* Header da Sidebar */}
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500">
-              <span className="text-lg font-bold text-white">↗</span>
+        <div className="flex items-center justify-between border-b border-slate-800 px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500">
+              <span className="text-sm font-bold text-white">↗</span>
             </div>
-            <p className="text-xl font-bold">IR Trade</p>
+            <p className="text-base font-bold">IR Trade</p>
           </div>
           
-          {/* Botão fechar - só aparece no mobile */}
+          {/* Botão fechar - só no mobile */}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Menu de navegação */}
-        <nav className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="space-y-2">
+        <nav className="flex-1 overflow-y-auto px-2 py-4">
+          <div className="space-y-1">
             {itensMenu.map((item) => {
               const ativo =
                 pathname === item.href ||
@@ -95,14 +95,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={onClose} // Fecha sidebar ao clicar no mobile
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition ${
+                  onClick={onClose}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     ativo
                       ? "bg-[#0c3844] text-emerald-400 ring-1 ring-emerald-500/30"
                       : "text-slate-300 hover:bg-[#0d1d44] hover:text-white"
                   }`}
                 >
-                  <Icone className="h-5 w-5 flex-shrink-0" />
+                  <Icone className="h-4 w-4 flex-shrink-0" />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -111,16 +111,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Botão Sair */}
-        <div className="border-t border-slate-800 px-4 py-4">
+        <div className="border-t border-slate-800 px-2 py-3">
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-300 transition hover:bg-[#0d1d44] hover:text-white"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-300 transition hover:bg-[#0d1d44] hover:text-white"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-base flex-shrink-0">
-              N
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 text-xs flex-shrink-0">
+              R
             </div>
-            <span className="text-[15px] font-medium">Sair</span>
+            <span className="text-sm font-medium">Sair</span>
           </button>
         </div>
       </aside>

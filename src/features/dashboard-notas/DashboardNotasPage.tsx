@@ -67,14 +67,22 @@ export default function DashboardNotasPage() {
         <div className="flex gap-3 mb-6">
           <Button
             onClick={() => setMercadoSelecionado("b3")}
-            variant={mercadoSelecionado === "b3" ? "default" : "outline"}
+            className={
+              mercadoSelecionado === "b3"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                : "bg-transparent border border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+            }
           >
             B3
           </Button>
 
           <Button
             onClick={() => setMercadoSelecionado("forex")}
-            variant={mercadoSelecionado === "forex" ? "default" : "outline"}
+            className={
+              mercadoSelecionado === "forex"
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                : "bg-transparent border border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+            }
           >
             Forex
           </Button>
@@ -90,9 +98,7 @@ export default function DashboardNotasPage() {
             {carregando ? (
               <p>Carregando...</p>
             ) : notasSalvas.length === 0 ? (
-              <p className="text-slate-400">
-                Nenhuma nota encontrada.
-              </p>
+              <p className="text-slate-400">Nenhuma nota encontrada.</p>
             ) : (
               notasSalvas.map((nota) => (
                 <div
@@ -101,9 +107,7 @@ export default function DashboardNotasPage() {
                 >
                   <div>
                     <p>{nota.numero_nota}</p>
-                    <p className="text-xs text-gray-400">
-                      {nota.cliente}
-                    </p>
+                    <p className="text-xs text-gray-400">{nota.cliente}</p>
                   </div>
 
                   <Button
@@ -126,9 +130,7 @@ export default function DashboardNotasPage() {
             {carregando ? (
               <p>Carregando...</p>
             ) : notasForexSalvas.length === 0 ? (
-              <p className="text-slate-400">
-                Nenhum relatório encontrado.
-              </p>
+              <p className="text-slate-400">Nenhum relatório encontrado.</p>
             ) : (
               notasForexSalvas.map((nota) => (
                 <div
@@ -137,9 +139,7 @@ export default function DashboardNotasPage() {
                 >
                   <div>
                     <p>{nota.conta}</p>
-                    <p className="text-xs text-gray-400">
-                      {nota.cliente}
-                    </p>
+                    <p className="text-xs text-gray-400">{nota.cliente}</p>
                   </div>
 
                   <Button

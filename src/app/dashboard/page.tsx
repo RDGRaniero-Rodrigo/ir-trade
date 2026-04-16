@@ -73,7 +73,10 @@ function formatarMoeda(valor: number) {
 }
 
 function formatarNumeroUsd(valor: number) {
-  return valor.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return valor.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function round2(valor: number) {
@@ -151,24 +154,26 @@ function CardResumoValor({
       : "text-white";
 
   return (
-    <div className="rounded-[16px] bg-[#0c1d45] p-4">
-      <div className="flex items-center gap-2">
+    <div className="rounded-[12px] bg-[#0c1d45] px-3 py-2.5">
+      <div className="flex items-center gap-1.5">
         {icone && <span className="text-slate-400">{icone}</span>}
-        <p className="text-xs text-slate-300 md:text-sm">{titulo}</p>
+        <p className="text-[11px] text-slate-400">{titulo}</p>
       </div>
-      <p className={`mt-2 text-lg font-semibold md:text-xl ${cor}`}>{valor}</p>
+      <p className={`mt-1 text-sm font-semibold ${cor}`}>{valor}</p>
     </div>
   );
 }
 
 export default function DashboardHomePage() {
-  const [mercadoSelecionado, setMercadoSelecionado] = useState<MercadoSelecionado>("b3");
+  const [mercadoSelecionado, setMercadoSelecionado] =
+    useState<MercadoSelecionado>("b3");
   const [carregando, setCarregando] = useState(true);
   const [notasB3, setNotasB3] = useState<NotaSalva[]>([]);
   const [resumosForex, setResumosForex] = useState<ResumoMensalForex[]>([]);
-  const [chaveMesSelecionado, setChaveMesSelecionado] = useState<string | null>(null);
+  const [chaveMesSelecionado, setChaveMesSelecionado] = useState<string | null>(
+    null
+  );
 
-  // Carregar dados iniciais
   useEffect(() => {
     async function carregarDados() {
       try {
@@ -206,7 +211,6 @@ export default function DashboardHomePage() {
     carregarDados();
   }, []);
 
-  // Calcular resumos mensais B3
   const resumosMensaisB3 = useMemo<ResumoMensal[]>(() => {
     const mapa = new Map<string, ResumoMensal>();
 
@@ -260,12 +264,22 @@ export default function DashboardHomePage() {
       item.prejuizoAcumuladoAnterior = round2(prejuizoAcumulado);
 
       if (item.liquido < 0) {
-        item.prejuizoAcumuladoFinal = round2(prejuizoAcumulado + Math.abs(item.liquido));
+        item.prejuizoAcumuladoFinal = round2(
+          prejuizoAcumulado + Math.abs(item.liquido)
+        );
       } else if (item.liquido > 0) {
-        item.baseTributavel = round2(Math.max(0, item.liquido - prejuizoAcumulado));
-        item.impostoEstimado = round2(item.baseTributavel * ALIQUOTA_DAY_TRADE);
-        item.impostoAPagar = round2(Math.max(0, item.impostoEstimado - item.irrf));
-        item.prejuizoAcumuladoFinal = round2(Math.max(0, prejuizoAcumulado - item.liquido));
+        item.baseTributavel = round2(
+          Math.max(0, item.liquido - prejuizoAcumulado)
+        );
+        item.impostoEstimado = round2(
+          item.baseTributavel * ALIQUOTA_DAY_TRADE
+        );
+        item.impostoAPagar = round2(
+          Math.max(0, item.impostoEstimado - item.irrf)
+        );
+        item.prejuizoAcumuladoFinal = round2(
+          Math.max(0, prejuizoAcumulado - item.liquido)
+        );
       }
 
       prejuizoAcumulado = item.prejuizoAcumuladoFinal;
@@ -274,18 +288,32 @@ export default function DashboardHomePage() {
     return ordenado.reverse();
   }, [notasB3]);
 
-  // Selecionar o mês mais recente automaticamente
   useEffect(() => {
-    if (mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && !chaveMesSelecionado) {
+    if (
+      mercadoSelecionado === "b3" &&
+      resumosMensaisB3.length > 0 &&
+      !chaveMesSelecionado
+    ) {
       setChaveMesSelecionado(resumosMensaisB3[0].chave);
     }
-    if (mercadoSelecionado === "forex" && resumosForex.length > 0 && !chaveMesSelecionado) {
+    if (
+      mercadoSelecionado === "forex" &&
+      resumosForex.length > 0 &&
+      !chaveMesSelecionado
+    ) {
       setChaveMesSelecionado(resumosForex[0].chave);
     }
   }, [mercadoSelecionado, resumosMensaisB3, resumosForex, chaveMesSelecionado]);
 
-  const mesSelecionadoB3 = resumosMensaisB3.find((m) => m.chave === chaveMesSelecionado) || resumosMensaisB3[0] || null;
-  const mesSelecionadoForex = resumosForex.find((m) => m.chave === chaveMesSelecionado) || resumosForex[0] || null;
+  const mesSelecionadoB3 =
+    resumosMensaisB3.find((m) => m.chave === chaveMesSelecionado) ||
+    resumosMensaisB3[0] ||
+    null;
+
+  const mesSelecionadoForex =
+    resumosForex.find((m) => m.chave === chaveMesSelecionado) ||
+    resumosForex[0] ||
+    null;
 
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
@@ -315,56 +343,59 @@ export default function DashboardHomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-6 md:px-6 md:py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+    <div className="mx-auto max-w-5xl px-4 py-4 md:px-5 md:py-5">
+
+      {/* Header compacto */}
+      <div className="mb-4">
+        <p className="text-[10px] uppercase tracking-widest text-slate-500">
           Dashboard
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
+        <h1 className="mt-0.5 text-xl font-bold tracking-tight md:text-2xl">
           Resumo das Operações
         </h1>
-        <p className="mt-1 text-sm text-slate-300 md:text-base">
+        <p className="mt-0.5 text-xs text-slate-400">
           Acompanhe o resultado das suas operações e o imposto a pagar.
         </p>
       </div>
 
       {/* Seletor de Mercado */}
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap gap-2">
         <Button
           onClick={() => handleMudarMercado("b3")}
-          className={`h-12 rounded-xl px-6 text-sm font-semibold transition ${
+          className={`h-9 rounded-lg px-4 text-xs font-semibold transition ${
             mercadoSelecionado === "b3"
               ? "bg-emerald-500 text-white hover:bg-emerald-600"
               : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
           }`}
         >
-          <BarChart3 className="mr-2 h-4 w-4" />
+          <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
           Brasil / B3
         </Button>
         <Button
           onClick={() => handleMudarMercado("forex")}
-          className={`h-12 rounded-xl px-6 text-sm font-semibold transition ${
+          className={`h-9 rounded-lg px-4 text-xs font-semibold transition ${
             mercadoSelecionado === "forex"
               ? "bg-emerald-500 text-white hover:bg-emerald-600"
               : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
           }`}
         >
-          <TrendingUp className="mr-2 h-4 w-4" />
+          <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
           Forex / Internacional
         </Button>
       </div>
 
       {/* Seletor de Meses B3 */}
       {mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && (
-        <div className="mb-6">
-          <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-slate-500">
+            Selecione o mês:
+          </p>
+          <div className="flex flex-wrap gap-1.5">
             {resumosMensaisB3.map((mes) => (
               <Button
                 key={mes.chave}
                 onClick={() => handleSelecionarMes(mes.chave)}
-                className={`h-10 rounded-lg px-4 text-sm font-medium transition ${
+                className={`h-8 rounded-md px-3 text-xs font-medium transition ${
                   chaveMesSelecionado === mes.chave
                     ? "bg-emerald-500 text-white hover:bg-emerald-600"
                     : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
@@ -379,14 +410,16 @@ export default function DashboardHomePage() {
 
       {/* Seletor de Meses Forex */}
       {mercadoSelecionado === "forex" && resumosForex.length > 0 && (
-        <div className="mb-6">
-          <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-slate-500">
+            Selecione o mês:
+          </p>
+          <div className="flex flex-wrap gap-1.5">
             {resumosForex.map((mes) => (
               <Button
                 key={mes.chave}
                 onClick={() => handleSelecionarMes(mes.chave)}
-                className={`h-10 rounded-lg px-4 text-sm font-medium transition ${
+                className={`h-8 rounded-md px-3 text-xs font-medium transition ${
                   chaveMesSelecionado === mes.chave
                     ? "bg-emerald-500 text-white hover:bg-emerald-600"
                     : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
@@ -399,16 +432,17 @@ export default function DashboardHomePage() {
         </div>
       )}
 
-      {/* Card de Resumo do Mês */}
-      <div className="rounded-[20px] border border-slate-800 bg-[#061538] p-5 md:p-6">
+      {/* Card Principal */}
+      <div className="rounded-[16px] border border-slate-800 bg-[#061538] p-4">
+
         {/* Título do Mês */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold md:text-2xl">
+        <div className="mb-3">
+          <h2 className="text-base font-semibold">
             {mercadoSelecionado === "b3"
               ? mesSelecionadoB3?.label || "Nenhum mês disponível"
               : mesSelecionadoForex?.mes || "Nenhum mês disponível"}
           </h2>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="text-[11px] text-slate-400">
             {mercadoSelecionado === "b3"
               ? mesSelecionadoB3
                 ? `${mesSelecionadoB3.quantidade} nota(s) importada(s)`
@@ -419,18 +453,18 @@ export default function DashboardHomePage() {
           </p>
         </div>
 
-        {/* Conteúdo B3 */}
+        {/* ==================== CONTEÚDO B3 ==================== */}
         {mercadoSelecionado === "b3" && (
           <>
             {!mesSelecionadoB3 ? (
-              <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-6 text-center">
-                <FileText className="mx-auto h-12 w-12 text-slate-500" />
-                <p className="mt-4 text-slate-300">
+              <div className="rounded-[14px] border border-slate-700 bg-[#081733] p-5 text-center">
+                <FileText className="mx-auto h-10 w-10 text-slate-500" />
+                <p className="mt-3 text-sm text-slate-300">
                   Nenhuma nota importada ainda.
                 </p>
                 <Link
                   href="/dashboard/upload"
-                  className="mt-4 inline-flex h-10 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-white transition hover:bg-emerald-600"
+                  className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-500 px-4 text-xs font-medium text-white transition hover:bg-emerald-600"
                 >
                   Importar Nota
                 </Link>
@@ -438,35 +472,49 @@ export default function DashboardHomePage() {
             ) : (
               <>
                 {/* Resultado Principal */}
-                <div className="mb-6 rounded-[18px] border border-slate-700 bg-[#081733] p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="mb-3 rounded-[14px] border border-slate-700 bg-[#081733] px-4 py-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-300">Resultado Líquido do Mês</p>
+                      <p className="text-[11px] text-slate-400">
+                        Resultado Líquido do Mês
+                      </p>
                       <p
-                        className={`mt-1 text-3xl font-bold md:text-4xl ${
-                          mesSelecionadoB3.liquido < 0 ? "text-red-400" : "text-emerald-400"
+                        className={`mt-0.5 text-2xl font-bold ${
+                          mesSelecionadoB3.liquido < 0
+                            ? "text-red-400"
+                            : "text-emerald-400"
                         }`}
                       >
                         {mesSelecionadoB3.liquido < 0 && "-"}
                         {formatarMoeda(Math.abs(mesSelecionadoB3.liquido))}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {mesSelecionadoB3.liquido >= 0 ? (
-                        <TrendingUp className="h-8 w-8 text-emerald-400" />
-                      ) : (
-                        <TrendingDown className="h-8 w-8 text-red-400" />
-                      )}
-                    </div>
+                    {mesSelecionadoB3.liquido >= 0 ? (
+                      <TrendingUp className="h-6 w-6 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="h-6 w-6 text-red-400" />
+                    )}
                   </div>
                 </div>
 
-                {/* Cards de Detalhes */}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {/* Gráfico de Candles */}
+                <div className="mb-3">
+                  <GraficoCandlesMensal
+                    notas={notasB3}
+                    mesSelecionado={
+                      mesSelecionadoB3
+                        ? { ano: mesSelecionadoB3.ano, mes: mesSelecionadoB3.mes }
+                        : null
+                    }
+                  />
+                </div>
+
+                {/* Cards linha 1 */}
+                <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                   <CardResumoValor
                     titulo="Valor dos Negócios"
                     valor={formatarMoeda(mesSelecionadoB3.valorNegocios)}
-                    icone={<BarChart3 className="h-4 w-4" />}
+                    icone={<BarChart3 className="h-3.5 w-3.5" />}
                   />
                   <CardResumoValor
                     titulo="Custos"
@@ -484,12 +532,16 @@ export default function DashboardHomePage() {
                   />
                 </div>
 
-                {/* Cards de Imposto */}
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {/* Cards linha 2 */}
+                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
                   <CardResumoValor
                     titulo="Prejuízo Acumulado"
                     valor={formatarMoeda(mesSelecionadoB3.prejuizoAcumuladoFinal)}
-                    destaque={mesSelecionadoB3.prejuizoAcumuladoFinal > 0 ? "negativo" : "normal"}
+                    destaque={
+                      mesSelecionadoB3.prejuizoAcumuladoFinal > 0
+                        ? "negativo"
+                        : "normal"
+                    }
                   />
                   <CardResumoValor
                     titulo="Imposto Estimado (20%)"
@@ -499,50 +551,44 @@ export default function DashboardHomePage() {
                   <CardResumoValor
                     titulo="DARF a Pagar"
                     valor={formatarMoeda(mesSelecionadoB3.impostoAPagar)}
-                    destaque={mesSelecionadoB3.impostoAPagar > 0 ? "positivo" : "normal"}
-                    icone={<Receipt className="h-4 w-4" />}
+                    destaque={
+                      mesSelecionadoB3.impostoAPagar > 0 ? "positivo" : "normal"
+                    }
+                    icone={<Receipt className="h-3.5 w-3.5" />}
                   />
                 </div>
-
-                {/* ✅ Gráfico de Candles por Dia */}
-                <GraficoCandlesMensal
-                  notas={notasB3}
-                  mesSelecionado={
-                    mesSelecionadoB3
-                      ? { ano: mesSelecionadoB3.ano, mes: mesSelecionadoB3.mes }
-                      : null
-                  }
-                />
               </>
             )}
           </>
         )}
 
-        {/* Conteúdo Forex */}
+        {/* ==================== CONTEÚDO FOREX ==================== */}
         {mercadoSelecionado === "forex" && (
           <>
             {!mesSelecionadoForex ? (
-              <div className="rounded-[16px] border border-slate-700 bg-[#081733] p-6 text-center">
-                <FileText className="mx-auto h-12 w-12 text-slate-500" />
-                <p className="mt-4 text-slate-300">
+              <div className="rounded-[14px] border border-slate-700 bg-[#081733] p-5 text-center">
+                <FileText className="mx-auto h-10 w-10 text-slate-500" />
+                <p className="mt-3 text-sm text-slate-300">
                   Nenhum relatório Forex importado ainda.
                 </p>
                 <Link
                   href="/dashboard/upload"
-                  className="mt-4 inline-flex h-10 items-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-white transition hover:bg-emerald-600"
+                  className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-500 px-4 text-xs font-medium text-white transition hover:bg-emerald-600"
                 >
                   Importar Relatório
                 </Link>
               </div>
             ) : (
               <>
-                {/* Resultado Principal */}
-                <div className="mb-6 rounded-[18px] border border-slate-700 bg-[#081733] p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                {/* Resultado Principal Forex */}
+                <div className="mb-3 rounded-[14px] border border-slate-700 bg-[#081733] px-4 py-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-300">Resultado do Mês (BRL)</p>
+                      <p className="text-[11px] text-slate-400">
+                        Resultado do Mês (BRL)
+                      </p>
                       <p
-                        className={`mt-1 text-3xl font-bold md:text-4xl ${
+                        className={`mt-0.5 text-2xl font-bold ${
                           mesSelecionadoForex.resultadoConvertidoBRL < 0
                             ? "text-red-400"
                             : "text-emerald-400"
@@ -551,18 +597,16 @@ export default function DashboardHomePage() {
                         {formatarMoeda(mesSelecionadoForex.resultadoConvertidoBRL)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {mesSelecionadoForex.resultadoConvertidoBRL >= 0 ? (
-                        <TrendingUp className="h-8 w-8 text-emerald-400" />
-                      ) : (
-                        <TrendingDown className="h-8 w-8 text-red-400" />
-                      )}
-                    </div>
+                    {mesSelecionadoForex.resultadoConvertidoBRL >= 0 ? (
+                      <TrendingUp className="h-6 w-6 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="h-6 w-6 text-red-400" />
+                    )}
                   </div>
                 </div>
 
-                {/* Cards de Detalhes Forex */}
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {/* Cards Forex */}
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                   <CardResumoValor
                     titulo="Resultado (USD)"
                     valor={`$ ${formatarNumeroUsd(mesSelecionadoForex.resultadoMesUSD)}`}
@@ -576,7 +620,9 @@ export default function DashboardHomePage() {
                   />
                   <CardResumoValor
                     titulo="Depósito / Retirada (USD)"
-                    valor={`$ ${formatarNumeroUsd(mesSelecionadoForex.depositoRetiradaUSD)}`}
+                    valor={`$ ${formatarNumeroUsd(
+                      mesSelecionadoForex.depositoRetiradaUSD
+                    )}`}
                     destaque={
                       mesSelecionadoForex.depositoRetiradaUSD < 0
                         ? "negativo"
@@ -597,8 +643,10 @@ export default function DashboardHomePage() {
                   <CardResumoValor
                     titulo="DARF a Pagar"
                     valor={formatarMoeda(mesSelecionadoForex.darfPagar)}
-                    destaque={mesSelecionadoForex.darfPagar > 0 ? "positivo" : "normal"}
-                    icone={<Receipt className="h-4 w-4" />}
+                    destaque={
+                      mesSelecionadoForex.darfPagar > 0 ? "positivo" : "normal"
+                    }
+                    icone={<Receipt className="h-3.5 w-3.5" />}
                   />
                   <CardResumoValor
                     titulo="Relatórios"
@@ -612,43 +660,43 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Links Rápidos */}
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <Link
           href="/dashboard/upload"
-          className="flex items-center gap-4 rounded-[16px] border border-slate-800 bg-[#061538] p-4 transition hover:border-emerald-500/50 hover:bg-[#081733]"
+          className="flex items-center gap-3 rounded-[14px] border border-slate-800 bg-[#061538] p-3 transition hover:border-emerald-500/50 hover:bg-[#081733]"
         >
-          <div className="rounded-full bg-emerald-500/10 p-3 text-emerald-400">
-            <FileText className="h-5 w-5" />
+          <div className="rounded-full bg-emerald-500/10 p-2 text-emerald-400">
+            <FileText className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold">Importar Nota</p>
-            <p className="text-sm text-slate-400">Upload de PDF ou EML</p>
+            <p className="text-sm font-semibold">Importar Nota</p>
+            <p className="text-[11px] text-slate-400">Upload de PDF ou EML</p>
           </div>
         </Link>
 
         <Link
           href="/dashboard/upload?aba=mensal"
-          className="flex items-center gap-4 rounded-[16px] border border-slate-800 bg-[#061538] p-4 transition hover:border-emerald-500/50 hover:bg-[#081733]"
+          className="flex items-center gap-3 rounded-[14px] border border-slate-800 bg-[#061538] p-3 transition hover:border-emerald-500/50 hover:bg-[#081733]"
         >
-          <div className="rounded-full bg-cyan-500/10 p-3 text-cyan-400">
-            <BarChart3 className="h-5 w-5" />
+          <div className="rounded-full bg-cyan-500/10 p-2 text-cyan-400">
+            <BarChart3 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold">Resumo Mensal</p>
-            <p className="text-sm text-slate-400">Ver detalhes e DARF</p>
+            <p className="text-sm font-semibold">Resumo Mensal</p>
+            <p className="text-[11px] text-slate-400">Ver detalhes e DARF</p>
           </div>
         </Link>
 
         <Link
           href="/dashboard/upload?aba=notas"
-          className="flex items-center gap-4 rounded-[16px] border border-slate-800 bg-[#061538] p-4 transition hover:border-emerald-500/50 hover:bg-[#081733]"
+          className="flex items-center gap-3 rounded-[14px] border border-slate-800 bg-[#061538] p-3 transition hover:border-emerald-500/50 hover:bg-[#081733]"
         >
-          <div className="rounded-full bg-violet-500/10 p-3 text-violet-400">
-            <Receipt className="h-5 w-5" />
+          <div className="rounded-full bg-violet-500/10 p-2 text-violet-400">
+            <Receipt className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold">Notas Salvas</p>
-            <p className="text-sm text-slate-400">Gerenciar histórico</p>
+            <p className="text-sm font-semibold">Notas Salvas</p>
+            <p className="text-[11px] text-slate-400">Gerenciar histórico</p>
           </div>
         </Link>
       </div>

@@ -18,14 +18,10 @@ type CandleDia = {
   valor: number;
 };
 
-function parseDataPregao(data: string): { dia: number; mes: number; ano: number } | null {
+function parseDataPregao(data: string) {
   const partes = data.split('/');
   if (partes.length !== 3) return null;
-  return {
-    dia: Number(partes[0]),
-    mes: Number(partes[1]),
-    ano: Number(partes[2]),
-  };
+  return { dia: Number(partes[0]), mes: Number(partes[1]), ano: Number(partes[2]) };
 }
 
 function formatarMoeda(valor: number) {
@@ -35,18 +31,14 @@ function formatarMoeda(valor: number) {
 export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMensalProps) {
   const candles = useMemo<CandleDia[]>(() => {
     if (!mesSelecionado) return [];
-
     const mapa = new Map<number, number>();
-
     for (const nota of notas) {
       const parsed = parseDataPregao(nota.dataPregao);
       if (!parsed) continue;
       if (parsed.mes !== mesSelecionado.mes || parsed.ano !== mesSelecionado.ano) continue;
-
       const valor = nota.sinalLiquido === 'D' ? -nota.valorLiquido : nota.valorLiquido;
       mapa.set(parsed.dia, (mapa.get(parsed.dia) ?? 0) + valor);
     }
-
     return Array.from(mapa.entries())
       .map(([dia, valor]) => ({ dia, valor: Number(valor.toFixed(2)) }))
       .sort((a, b) => a.dia - b.dia);
@@ -55,115 +47,162 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
   if (candles.length === 0) return null;
 
   const maxAbsoluto = Math.max(...candles.map((c) => Math.abs(c.valor)));
-  const ALTURA_MAX = 100;
-  const LARGURA_CANDLE = 32;
+  const ALTURA_MAX = 80;
+  const LARGURA_CANDLE = 28;
+  const CORPO_W = 14;
+  const WICK_W = 2;
 
   return (
-    <div className="mt-4 rounded-[16px] border border-slate-700 bg-[#081733] p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-[14px] border border-slate-700/60 bg-[#161b22] overflow-hidden">
+      {/* Header do gráfico */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/40">
         <div>
-          <p className="text-sm font-semibold text-slate-200">Resultado por Dia</p>
-          <p className="text-xs text-slate-500">Cada barra = 1 dia com nota importada</p>
+          <p className="text-xs font-semibold text-slate-200">Resultado por Dia</p>
+          <p className="text-[10px] text-slate-500">Cada candle = 1 dia com nota importada</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
-            <span className="text-xs text-slate-400">Positivo</span>
+            <div className="h-2 w-2 rounded-sm bg-[#26a69a]" />
+            <span className="text-[10px] text-slate-400">Positivo</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-sm bg-red-500" />
-            <span className="text-xs text-slate-400">Negativo</span>
+            <div className="h-2 w-2 rounded-sm bg-[#ef5350]" />
+            <span className="text-[10px] text-slate-400">Negativo</span>
           </div>
         </div>
       </div>
 
       {/* Área do gráfico */}
-      <div className="relative overflow-x-auto">
+      <div className="relative overflow-x-auto px-4 py-3" style={{ background: '#161b22' }}>
+        {/* Linhas de grade horizontais */}
+        <div className="absolute inset-x-4 pointer-events-none" style={{ top: 12, height: ALTURA_MAX * 2 }}>
+          {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
+            <div
+              key={frac}
+              className="absolute left-0 right-0 border-t border-slate-700/30"
+              style={{ top: `${frac * 100}%` }}
+            />
+          ))}
+        </div>
+
         <div
-          className="flex items-center gap-1.5 px-1"
-          style={{ minHeight: ALTURA_MAX * 2 + 28, minWidth: candles.length * (LARGURA_CANDLE + 6) }}
+          className="relative flex items-end gap-0.5"
+          style={{
+            height: ALTURA_MAX * 2 + 20,
+            minWidth: candles.length * (LARGURA_CANDLE + 2),
+          }}
         >
           {candles.map((candle) => {
-            const alturaPixel =
-              maxAbsoluto > 0
-                ? Math.max(6, Math.round((Math.abs(candle.valor) / maxAbsoluto) * ALTURA_MAX))
-                : 6;
-
             const positivo = candle.valor >= 0;
+            const alturaCorpo = maxAbsoluto > 0
+              ? Math.max(4, Math.round((Math.abs(candle.valor) / maxAbsoluto) * ALTURA_MAX))
+              : 4;
+            const alturaWick = Math.min(alturaCorpo * 0.3, 8);
+
+            const corCorpo = positivo ? '#26a69a' : '#ef5350';
+            const corWick = positivo ? '#1a7a75' : '#b03030';
+
+            // Posição Y do candle
+            const centroY = ALTURA_MAX; // linha do zero
 
             return (
               <div
                 key={candle.dia}
-                className="group relative flex flex-shrink-0 flex-col items-center"
-                style={{ width: LARGURA_CANDLE }}
+                className="group relative flex-shrink-0 flex flex-col items-center cursor-pointer"
+                style={{ width: LARGURA_CANDLE, height: ALTURA_MAX * 2 + 20 }}
               >
                 {/* Tooltip */}
-                <div className="pointer-events-none absolute z-20 hidden -translate-x-1/2 rounded-lg border border-slate-600 bg-[#0c1d45] px-3 py-2 text-center shadow-xl group-hover:block"
-                  style={{
-                    bottom: ALTURA_MAX * 2 + 36,
-                    left: '50%',
-                  }}
+                <div
+                  className="pointer-events-none absolute z-30 hidden group-hover:flex flex-col items-center rounded-lg border border-slate-600 bg-[#1e2530] px-2.5 py-1.5 shadow-xl"
+                  style={{ bottom: ALTURA_MAX * 2 + 28, left: '50%', transform: 'translateX(-50%)' }}
                 >
-                  <p className="whitespace-nowrap text-xs font-semibold text-slate-200">
+                  <p className="whitespace-nowrap text-[10px] font-semibold text-slate-300">
                     Dia {String(candle.dia).padStart(2, '0')}
                   </p>
-                  <p
-                    className={`whitespace-nowrap text-xs font-bold ${
-                      positivo ? 'text-emerald-400' : 'text-red-400'
-                    }`}
-                  >
+                  <p className={`whitespace-nowrap text-[10px] font-bold ${positivo ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
                     {formatarMoeda(candle.valor)}
                   </p>
                 </div>
 
-                {/* Parte superior — candles positivos crescem para cima */}
-                <div
-                  className="flex w-full items-end justify-center"
-                  style={{ height: ALTURA_MAX }}
+                {/* SVG do Candle */}
+                <svg
+                  width={LARGURA_CANDLE}
+                  height={ALTURA_MAX * 2}
+                  style={{ position: 'absolute', top: 0, left: 0 }}
+                  overflow="visible"
                 >
-                  {positivo && (
-                    <div
-                      className="w-5 cursor-pointer rounded-t-md bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)] transition-all duration-200 group-hover:bg-emerald-400 group-hover:shadow-[0_0_10px_rgba(16,185,129,0.6)]"
-                      style={{ height: alturaPixel }}
-                    />
+                  {positivo ? (
+                    <>
+                      {/* Wick superior */}
+                      <rect
+                        x={(LARGURA_CANDLE - WICK_W) / 2}
+                        y={centroY - alturaCorpo - alturaWick}
+                        width={WICK_W}
+                        height={alturaWick}
+                        fill={corWick}
+                        rx={1}
+                      />
+                      {/* Corpo */}
+                      <rect
+                        x={(LARGURA_CANDLE - CORPO_W) / 2}
+                        y={centroY - alturaCorpo}
+                        width={CORPO_W}
+                        height={alturaCorpo}
+                        fill={corCorpo}
+                        rx={2}
+                        className="transition-all duration-150 group-hover:opacity-80"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* Corpo */}
+                      <rect
+                        x={(LARGURA_CANDLE - CORPO_W) / 2}
+                        y={centroY}
+                        width={CORPO_W}
+                        height={alturaCorpo}
+                        fill={corCorpo}
+                        rx={2}
+                        className="transition-all duration-150 group-hover:opacity-80"
+                      />
+                      {/* Wick inferior */}
+                      <rect
+                        x={(LARGURA_CANDLE - WICK_W) / 2}
+                        y={centroY + alturaCorpo}
+                        width={WICK_W}
+                        height={alturaWick}
+                        fill={corWick}
+                        rx={1}
+                      />
+                    </>
                   )}
-                </div>
-
-                {/* Linha central (zero) */}
-                <div className="h-px w-full bg-slate-600" />
-
-                {/* Parte inferior — candles negativos crescem para baixo */}
-                <div
-                  className="flex w-full items-start justify-center"
-                  style={{ height: ALTURA_MAX }}
-                >
-                  {!positivo && (
-                    <div
-                      className="w-5 cursor-pointer rounded-b-md bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)] transition-all duration-200 group-hover:bg-red-400 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.6)]"
-                      style={{ height: alturaPixel }}
-                    />
-                  )}
-                </div>
+                  {/* Linha do zero */}
+                  <line
+                    x1={0}
+                    y1={centroY}
+                    x2={LARGURA_CANDLE}
+                    y2={centroY}
+                    stroke="#334155"
+                    strokeWidth={1}
+                  />
+                </svg>
 
                 {/* Label do dia */}
-                <span className="mt-1 text-[10px] font-medium text-slate-500">
+                <span
+                  className="absolute text-[9px] font-medium text-slate-600"
+                  style={{ bottom: 2 }}
+                >
                   {String(candle.dia).padStart(2, '0')}
                 </span>
               </div>
             );
           })}
         </div>
-
-        {/* Linha de zero label */}
-        <div
-          className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-slate-600/60"
-          style={{ top: ALTURA_MAX + 1 }}
-        />
       </div>
 
       {/* Rodapé */}
-      <div className="mt-2 flex items-center justify-end border-t border-slate-700/40 pt-2">
-        <span className="text-xs text-slate-500">
+      <div className="flex items-center justify-end border-t border-slate-700/30 px-4 py-1.5">
+        <span className="text-[10px] text-slate-600">
           {candles.length} dia{candles.length !== 1 ? 's' : ''} com operação no mês
         </span>
       </div>

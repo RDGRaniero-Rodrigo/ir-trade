@@ -6,19 +6,6 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const { pathname } = request.nextUrl;
 
-  // Rotas públicas — nunca bloquear
-  const rotasPublicas = [
-    "/login",
-    "/planos",
-    "/renovar",
-    "/obrigado",
-    "/api/hotmart",
-  ];
-
-  if (rotasPublicas.some((rota) => pathname.startsWith(rota))) {
-    return response;
-  }
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,41 +23,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // ✅ getUser é mais seguro que getSession
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Não logado → login
+  // Não logado tentando acessar dashboard → login
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Logado → verifica assinatura
-  if (user && pathname.startsWith("/dashboard")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("pago, status_assinatura, data_expiracao")
-      .eq("id", user.id)
-      .single();
-
-    const agora = new Date();
-    const expirado =
-      profile?.data_expiracao && new Date(profile.data_expiracao) < agora;
-
-    const assinaturaAtiva =
-      profile?.pago === true &&
-      profile?.status_assinatura === "active" &&
-      !expirado;
-
-    if (!assinaturaAtiva) {
-      // Nunca pagou → página de vendas
-      if (!profile?.pago) {
-        return NextResponse.redirect(new URL("/planos", request.url));
-      }
-      // Já foi cliente, expirou → direto pro checkout
-      return NextResponse.redirect(new URL("/renovar", request.url));
-    }
   }
 
   // Já logado tentando acessar /login → dashboard

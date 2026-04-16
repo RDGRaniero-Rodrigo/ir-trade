@@ -10,16 +10,20 @@ const itensMenu = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+    exact: true,
   },
   {
     href: "/dashboard/upload",
     label: "Upload PDF",
     icon: Upload,
+    exact: false,
   },
   {
-    href: "/dashboard/notas",
+    href: "/dashboard/upload?aba=notas",   // ← aponta para a aba notas
     label: "Notas",
     icon: FileText,
+    exact: false,
+    matchHref: "/dashboard/notas",         // ← detecta /notas como ativo também
   },
 ];
 
@@ -71,8 +75,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <p className="text-base font-bold">IR Trade</p>
           </div>
-          
-          {/* Botão fechar - só no mobile */}
+
           <button
             type="button"
             onClick={onClose}
@@ -87,13 +90,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="space-y-1">
             {itensMenu.map((item) => {
               const ativo =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                item.exact
+                  ? pathname === item.href
+                  : pathname.startsWith(item.matchHref ?? item.href) ||
+                    pathname === item.href;
+
               const Icone = item.icon;
 
               return (
                 <Link
-                  key={item.href}
+                  key={item.label}
                   href={item.href}
                   onClick={onClose}
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${

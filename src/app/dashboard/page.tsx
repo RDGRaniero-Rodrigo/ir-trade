@@ -21,6 +21,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
 
 type MercadoSelecionado = "b3" | "forex";
 
@@ -184,7 +185,6 @@ export default function DashboardHomePage() {
 
         setNotasB3(b3.map(mapNotaB3BancoParaLocal));
 
-        // Calcular resumos Forex
         if (forex.length > 0) {
           const relatorios = forex.map((nota) => ({
             id: nota.id,
@@ -209,11 +209,11 @@ export default function DashboardHomePage() {
   // Calcular resumos mensais B3
   const resumosMensaisB3 = useMemo<ResumoMensal[]>(() => {
     const mapa = new Map<string, ResumoMensal>();
-    
+
     for (const nota of notasB3) {
       const { mes, ano } = parseDataPregao(nota.dataPregao);
       const chave = `${ano}-${String(mes).padStart(2, "0")}`;
-      
+
       if (!mapa.has(chave)) {
         mapa.set(chave, {
           chave,
@@ -233,7 +233,7 @@ export default function DashboardHomePage() {
           prejuizoAcumuladoFinal: 0,
         });
       }
-      
+
       const item = mapa.get(chave)!;
       item.quantidade += 1;
       item.valorNegocios += nota.valorNegocios;
@@ -242,7 +242,6 @@ export default function DashboardHomePage() {
       item.liquido += getLiquidoAssinado(nota);
     }
 
-    // Ordenar e calcular imposto
     const ordenado = Array.from(mapa.values())
       .map((item) => ({
         ...item,
@@ -256,11 +255,10 @@ export default function DashboardHomePage() {
         return a.mes - b.mes;
       });
 
-    // Calcular imposto com prejuízo acumulado
     let prejuizoAcumulado = 0;
     for (const item of ordenado) {
       item.prejuizoAcumuladoAnterior = round2(prejuizoAcumulado);
-      
+
       if (item.liquido < 0) {
         item.prejuizoAcumuladoFinal = round2(prejuizoAcumulado + Math.abs(item.liquido));
       } else if (item.liquido > 0) {
@@ -269,11 +267,10 @@ export default function DashboardHomePage() {
         item.impostoAPagar = round2(Math.max(0, item.impostoEstimado - item.irrf));
         item.prejuizoAcumuladoFinal = round2(Math.max(0, prejuizoAcumulado - item.liquido));
       }
-      
+
       prejuizoAcumulado = item.prejuizoAcumuladoFinal;
     }
 
-    // Retornar do mais recente para o mais antigo
     return ordenado.reverse();
   }, [notasB3]);
 
@@ -287,14 +284,12 @@ export default function DashboardHomePage() {
     }
   }, [mercadoSelecionado, resumosMensaisB3, resumosForex, chaveMesSelecionado]);
 
-  // Mês selecionado
   const mesSelecionadoB3 = resumosMensaisB3.find((m) => m.chave === chaveMesSelecionado) || resumosMensaisB3[0] || null;
   const mesSelecionadoForex = resumosForex.find((m) => m.chave === chaveMesSelecionado) || resumosForex[0] || null;
 
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
     setConfigToStorage(mercado);
-    // Selecionar primeiro mês do novo mercado
     if (mercado === "b3" && resumosMensaisB3.length > 0) {
       setChaveMesSelecionado(resumosMensaisB3[0].chave);
     } else if (mercado === "forex" && resumosForex.length > 0) {
@@ -360,7 +355,7 @@ export default function DashboardHomePage() {
         </Button>
       </div>
 
-      {/* Seletor de Meses */}
+      {/* Seletor de Meses B3 */}
       {mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && (
         <div className="mb-6">
           <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
@@ -382,6 +377,7 @@ export default function DashboardHomePage() {
         </div>
       )}
 
+      {/* Seletor de Meses Forex */}
       {mercadoSelecionado === "forex" && resumosForex.length > 0 && (
         <div className="mb-6">
           <p className="mb-3 text-sm font-medium text-slate-400">Selecione o mês:</p>
@@ -488,7 +484,7 @@ export default function DashboardHomePage() {
                   />
                 </div>
 
-                {/* Imposto */}
+                {/* Cards de Imposto */}
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <CardResumoValor
                     titulo="Prejuízo Acumulado"
@@ -507,6 +503,16 @@ export default function DashboardHomePage() {
                     icone={<Receipt className="h-4 w-4" />}
                   />
                 </div>
+
+                {/* ✅ Gráfico de Candles por Dia */}
+                <GraficoCandlesMensal
+                  notas={notasB3}
+                  mesSelecionado={
+                    mesSelecionadoB3
+                      ? { ano: mesSelecionadoB3.ano, mes: mesSelecionadoB3.mes }
+                      : null
+                  }
+                />
               </>
             )}
           </>
@@ -555,7 +561,7 @@ export default function DashboardHomePage() {
                   </div>
                 </div>
 
-                {/* Cards de Detalhes */}
+                {/* Cards de Detalhes Forex */}
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <CardResumoValor
                     titulo="Resultado (USD)"

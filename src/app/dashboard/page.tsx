@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   listarNotasB3,
@@ -21,11 +21,14 @@ import {
   BarChart3,
   FileText,
 } from "lucide-react";
-import Link from "next/link";
 import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
 import { GraficoCandlesForex } from "@/components/dashboard/GraficoCandlesForex";
+import { UploadInline } from "@/components/dashboard/UploadInline";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type MercadoSelecionado = "b3" | "forex";
+type ViewMode = "dashboard" | "upload";
 
 type NotaSalva = {
   id: string;
@@ -57,6 +60,8 @@ type ResumoMensal = {
   prejuizoAcumuladoFinal: number;
 };
 
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
 const STORAGE_KEY_CONFIG = "irtrade_configuracoes_corretora";
 const ALIQUOTA_DAY_TRADE = 0.2;
 
@@ -68,6 +73,8 @@ const NOMES_MESES_CURTOS = [
   "Jan","Fev","Mar","Abr","Mai","Jun",
   "Jul","Ago","Set","Out","Nov","Dez",
 ];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatarMoeda(valor: number) {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -133,6 +140,8 @@ function mapNotaB3BancoParaLocal(nota: NotaB3Banco): NotaSalva {
   };
 }
 
+// ─── Componente CardResumoValor ───────────────────────────────────────────────
+
 function CardResumoValor({
   titulo,
   valor,
@@ -161,52 +170,59 @@ function CardResumoValor({
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function DashboardHomePage() {
-  const [mercadoSelecionado, setMercadoSelecionado] =
-    useState<MercadoSelecionado>("b3");
+  const [mercadoSelecionado, setMercadoSelecionado] = useState<MercadoSelecionado>("b3");
+  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
   const [carregando, setCarregando] = useState(true);
   const [notasB3, setNotasB3] = useState<NotaSalva[]>([]);
   const [resumosForex, setResumosForex] = useState<ResumoMensalForex[]>([]);
-
-  // ← NOVO: guarda os relatórios raw para o gráfico do Forex
   const [relatoriosForexRaw, setRelatoriosForexRaw] = useState<RelatorioForex[]>([]);
-
   const [chaveMesSelecionado, setChaveMesSelecionado] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function carregarDados() {
-      try {
-        setCarregando(true);
-        const config = getConfigFromStorage();
-        if (config.mercado === "forex") setMercadoSelecionado("forex");
+  // ─── Carregamento de dados ─────────────────────────────────────────────────
 
-        const [b3, forex] = await Promise.all([listarNotasB3(), listarNotasForex()]);
-        setNotasB3(b3.map(mapNotaB3BancoParaLocal));
+  const carregarDados = useCallback(async () => {
+    try {
+      setCarregando(true);
+      const [b3, forex] = await Promise.all([listarNotasB3(), listarNotasForex()]);
+      setNotasB3(b3.map(mapNotaB3BancoParaLocal));
 
-        if (forex.length > 0) {
-          const relatorios: RelatorioForex[] = forex.map((nota) => ({
-            id: nota.id,
-            data: normalizarDataForexParaCalculo(nota.data_relatorio ?? ""),
-            saldoInicial: Number(nota.saldo_inicial_usd ?? 0),
-            resultadoDia: Number(nota.resultado_dia_usd ?? 0),
-            depositoRetirada: Number(nota.deposito_retirada_usd ?? 0),
-            saldoFinal: Number(nota.saldo_final_usd ?? 0),
-          }));
-
-          // ← NOVO: salva o raw para alimentar o gráfico
-          setRelatoriosForexRaw(relatorios);
-
-          const resultados = await calcularFechamentosMensaisForex(relatorios);
-          setResumosForex(resultados);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-      } finally {
-        setCarregando(false);
+      if (forex.length > 0) {
+        const relatorios: RelatorioForex[] = forex.map((nota) => ({
+          id: nota.id,
+          data: normalizarDataForexParaCalculo(nota.data_relatorio ?? ""),
+          saldoInicial: Number(nota.saldo_inicial_usd ?? 0),
+          resultadoDia: Number(nota.resultado_dia_usd ?? 0),
+          depositoRetirada: Number(nota.deposito_retirada_usd ?? 0),
+          saldoFinal: Number(nota.saldo_final_usd ?? 0),
+        }));
+        setRelatoriosForexRaw(relatorios);
+        const resultados = await calcularFechamentosMensaisForex(relatorios);
+        setResumosForex(resultados);
       }
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setCarregando(false);
     }
-    carregarDados();
   }, []);
+
+  useEffect(() => {
+    const config = getConfigFromStorage();
+    if (config.mercado === "forex") setMercadoSelecionado("forex");
+    carregarDados();
+  }, [carregarDados]);
+
+  // ─── Após upload bem-sucedido ──────────────────────────────────────────────
+
+  async function handleUploadSuccess() {
+    setViewMode("dashboard");
+    await carregarDados();
+  }
+
+  // ─── Resumos mensais B3 ────────────────────────────────────────────────────
 
   const resumosMensaisB3 = useMemo<ResumoMensal[]>(() => {
     const mapa = new Map<string, ResumoMensal>();
@@ -261,6 +277,8 @@ export default function DashboardHomePage() {
     return ordenado.reverse();
   }, [notasB3]);
 
+  // ─── Seleciona mês inicial ─────────────────────────────────────────────────
+
   useEffect(() => {
     if (mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && !chaveMesSelecionado) {
       setChaveMesSelecionado(resumosMensaisB3[0].chave);
@@ -283,6 +301,7 @@ export default function DashboardHomePage() {
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
     setConfigToStorage(mercado);
+    setViewMode("dashboard");
     if (mercado === "b3" && resumosMensaisB3.length > 0) {
       setChaveMesSelecionado(resumosMensaisB3[0].chave);
     } else if (mercado === "forex" && resumosForex.length > 0) {
@@ -296,6 +315,8 @@ export default function DashboardHomePage() {
     setChaveMesSelecionado(chave);
   }
 
+  // ─── Loading ───────────────────────────────────────────────────────────────
+
   if (carregando) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -307,7 +328,8 @@ export default function DashboardHomePage() {
     );
   }
 
-  // ─── Seletor de meses ─────────────────────────────────────────────────────
+  // ─── Seletor de meses ──────────────────────────────────────────────────────
+
   const seletorMeses = (
     <div className="flex flex-wrap gap-1.5">
       {mercadoSelecionado === "b3" &&
@@ -341,18 +363,19 @@ export default function DashboardHomePage() {
     </div>
   );
 
-  // ─── Conteúdo B3 ─────────────────────────────────────────────────────────
+  // ─── Conteúdo B3 ──────────────────────────────────────────────────────────
+
   const conteudoB3 = !mesSelecionadoB3 ? (
     <div className="flex min-h-[200px] items-center justify-center rounded-[16px] border border-slate-800 bg-[#061538]">
       <div className="text-center">
         <FileText className="mx-auto h-10 w-10 text-slate-500" />
         <p className="mt-3 text-sm text-slate-300">Nenhuma nota importada ainda.</p>
-        <Link
-          href="/dashboard/upload"
+        <button
+          onClick={() => setViewMode("upload")}
           className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-500 px-4 text-xs font-medium text-white transition hover:bg-emerald-600"
         >
           Importar Nota
-        </Link>
+        </button>
       </div>
     </div>
   ) : (
@@ -433,18 +456,19 @@ export default function DashboardHomePage() {
     </div>
   );
 
-  // ─── Conteúdo Forex ───────────────────────────────────────────────────────
+  // ─── Conteúdo Forex ────────────────────────────────────────────────────────
+
   const conteudoForex = !mesSelecionadoForex ? (
     <div className="flex min-h-[200px] items-center justify-center rounded-[16px] border border-slate-800 bg-[#061538]">
       <div className="text-center">
         <FileText className="mx-auto h-10 w-10 text-slate-500" />
         <p className="mt-3 text-sm text-slate-300">Nenhum relatório importado.</p>
-        <Link
-          href="/dashboard/upload"
+        <button
+          onClick={() => setViewMode("upload")}
           className="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-500 px-4 text-xs font-medium text-white transition hover:bg-emerald-600"
         >
           Importar Relatório
-        </Link>
+        </button>
       </div>
     </div>
   ) : (
@@ -476,7 +500,7 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
-      {/* ← NOVO: Gráfico Forex */}
+      {/* Gráfico Forex */}
       <GraficoCandlesForex
         relatorios={relatoriosForexRaw}
         mesSelecionado={{
@@ -528,6 +552,22 @@ export default function DashboardHomePage() {
     </div>
   );
 
+  // ─── Conteúdo principal (dashboard ou upload) ──────────────────────────────
+
+  const conteudoPrincipal =
+    viewMode === "upload" ? (
+      <UploadInline
+        onClose={() => setViewMode("dashboard")}
+        onUploadSuccess={handleUploadSuccess}
+      />
+    ) : mercadoSelecionado === "b3" ? (
+      conteudoB3
+    ) : (
+      conteudoForex
+    );
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <>
       {/* ============================================================
@@ -570,37 +610,41 @@ export default function DashboardHomePage() {
           </Button>
         </div>
 
-        {/* Seletor de meses */}
-        {seletorMeses}
+        {/* Seletor de meses — esconde durante upload */}
+        {viewMode === "dashboard" && seletorMeses}
 
-        {/* Conteúdo */}
-        {mercadoSelecionado === "b3" ? conteudoB3 : conteudoForex}
+        {/* Conteúdo principal */}
+        {conteudoPrincipal}
 
         {/* Links rápidos */}
         <div className="border-t border-slate-700/50 pt-2">
           <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">Acesso rápido</p>
           <div className="grid grid-cols-3 gap-2">
-            <Link
-              href="/dashboard/upload"
-              className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-800 bg-[#061538] px-2 py-3 text-center text-[10px] text-slate-300 transition hover:border-emerald-500/50"
+            <button
+              onClick={() => setViewMode("upload")}
+              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] text-slate-300 transition ${
+                viewMode === "upload"
+                  ? "border-emerald-500/50 bg-emerald-500/10"
+                  : "border-slate-800 bg-[#061538] hover:border-emerald-500/50"
+              }`}
             >
               <FileText className="h-4 w-4 text-emerald-400" />
               Importar Nota
-            </Link>
-            <Link
-              href="/dashboard/upload?aba=mensal"
+            </button>
+            <button
+              onClick={() => setViewMode("dashboard")}
               className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-800 bg-[#061538] px-2 py-3 text-center text-[10px] text-slate-300 transition hover:border-emerald-500/50"
             >
               <BarChart3 className="h-4 w-4 text-cyan-400" />
               Resumo Mensal
-            </Link>
-            <Link
-              href="/dashboard/upload?aba=notas"
+            </button>
+            <button
+              onClick={() => setViewMode("dashboard")}
               className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-800 bg-[#061538] px-2 py-3 text-center text-[10px] text-slate-300 transition hover:border-emerald-500/50"
             >
               <Receipt className="h-4 w-4 text-violet-400" />
               Notas Salvas
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -622,11 +666,12 @@ export default function DashboardHomePage() {
             </p>
           </div>
 
+          {/* Botões de mercado */}
           <div className="flex flex-col gap-1.5">
             <Button
               onClick={() => handleMudarMercado("b3")}
               className={`h-9 w-full justify-start rounded-lg px-3 text-xs font-semibold transition ${
-                mercadoSelecionado === "b3"
+                mercadoSelecionado === "b3" && viewMode === "dashboard"
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
                   : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
               }`}
@@ -637,7 +682,7 @@ export default function DashboardHomePage() {
             <Button
               onClick={() => handleMudarMercado("forex")}
               className={`h-9 w-full justify-start rounded-lg px-3 text-xs font-semibold transition ${
-                mercadoSelecionado === "forex"
+                mercadoSelecionado === "forex" && viewMode === "dashboard"
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
                   : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
               }`}
@@ -649,36 +694,49 @@ export default function DashboardHomePage() {
 
           <div className="border-t border-slate-700/50" />
 
+          {/* Acesso rápido */}
           <div className="flex flex-col gap-1.5">
             <p className="text-[10px] uppercase tracking-wider text-slate-500">Acesso rápido</p>
-            <Link
-              href="/dashboard/upload"
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
+
+            <button
+              onClick={() => setViewMode("upload")}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${
+                viewMode === "upload"
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                  : "border-slate-800 bg-[#061538] hover:border-emerald-500/50 hover:bg-[#081733]"
+              }`}
             >
               <FileText className="h-3.5 w-3.5 flex-shrink-0 text-emerald-400" />
-              <span className="text-slate-300">Importar Nota</span>
-            </Link>
-            <Link
-              href="/dashboard/upload?aba=mensal"
+              <span className={viewMode === "upload" ? "text-emerald-400" : "text-slate-300"}>
+                Importar Nota
+              </span>
+            </button>
+
+            <button
+              onClick={() => setViewMode("dashboard")}
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
             >
               <BarChart3 className="h-3.5 w-3.5 flex-shrink-0 text-cyan-400" />
               <span className="text-slate-300">Resumo Mensal</span>
-            </Link>
-            <Link
-              href="/dashboard/upload?aba=notas"
+            </button>
+
+            <button
+              onClick={() => setViewMode("dashboard")}
               className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
             >
               <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-violet-400" />
               <span className="text-slate-300">Notas Salvas</span>
-            </Link>
+            </button>
           </div>
         </div>
 
         {/* Coluna direita — scroll interno */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-          {seletorMeses}
-          {mercadoSelecionado === "b3" ? conteudoB3 : conteudoForex}
+          {/* Seletor de meses — esconde durante upload */}
+          {viewMode === "dashboard" && seletorMeses}
+
+          {/* Conteúdo principal */}
+          {conteudoPrincipal}
         </div>
       </div>
     </>

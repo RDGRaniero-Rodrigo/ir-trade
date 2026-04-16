@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -9,6 +10,7 @@ import {
 } from "@/lib/supabase/notas";
 import {
   calcularFechamentosMensaisForex,
+  type RelatorioForex,
   type ResumoMensalForex,
 } from "@/lib/calculo-forex";
 import {
@@ -21,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
+import { GraficoCandlesForex } from "@/components/dashboard/GraficoCandlesForex";
 
 type MercadoSelecionado = "b3" | "forex";
 
@@ -164,6 +167,10 @@ export default function DashboardHomePage() {
   const [carregando, setCarregando] = useState(true);
   const [notasB3, setNotasB3] = useState<NotaSalva[]>([]);
   const [resumosForex, setResumosForex] = useState<ResumoMensalForex[]>([]);
+
+  // ← NOVO: guarda os relatórios raw para o gráfico do Forex
+  const [relatoriosForexRaw, setRelatoriosForexRaw] = useState<RelatorioForex[]>([]);
+
   const [chaveMesSelecionado, setChaveMesSelecionado] = useState<string | null>(null);
 
   useEffect(() => {
@@ -177,7 +184,7 @@ export default function DashboardHomePage() {
         setNotasB3(b3.map(mapNotaB3BancoParaLocal));
 
         if (forex.length > 0) {
-          const relatorios = forex.map((nota) => ({
+          const relatorios: RelatorioForex[] = forex.map((nota) => ({
             id: nota.id,
             data: normalizarDataForexParaCalculo(nota.data_relatorio ?? ""),
             saldoInicial: Number(nota.saldo_inicial_usd ?? 0),
@@ -185,6 +192,10 @@ export default function DashboardHomePage() {
             depositoRetirada: Number(nota.deposito_retirada_usd ?? 0),
             saldoFinal: Number(nota.saldo_final_usd ?? 0),
           }));
+
+          // ← NOVO: salva o raw para alimentar o gráfico
+          setRelatoriosForexRaw(relatorios);
+
           const resultados = await calcularFechamentosMensaisForex(relatorios);
           setResumosForex(resultados);
         }
@@ -261,11 +272,13 @@ export default function DashboardHomePage() {
 
   const mesSelecionadoB3 =
     resumosMensaisB3.find((m) => m.chave === chaveMesSelecionado) ||
-    resumosMensaisB3[0] || null;
+    resumosMensaisB3[0] ||
+    null;
 
   const mesSelecionadoForex =
     resumosForex.find((m) => m.chave === chaveMesSelecionado) ||
-    resumosForex[0] || null;
+    resumosForex[0] ||
+    null;
 
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
@@ -294,7 +307,7 @@ export default function DashboardHomePage() {
     );
   }
 
-  // ─── Seletor de meses (reutilizado em mobile e desktop) ───────────────────
+  // ─── Seletor de meses ─────────────────────────────────────────────────────
   const seletorMeses = (
     <div className="flex flex-wrap gap-1.5">
       {mercadoSelecionado === "b3" &&
@@ -369,7 +382,7 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
-      {/* Gráfico */}
+      {/* Gráfico B3 */}
       <GraficoCandlesMensal
         notas={notasB3}
         mesSelecionado={{ ano: mesSelecionadoB3.ano, mes: mesSelecionadoB3.mes }}
@@ -447,9 +460,12 @@ export default function DashboardHomePage() {
               </span>
             </p>
             <p className={`mt-0.5 text-2xl font-bold ${
-              mesSelecionadoForex.resultadoConvertidoBRL < 0 ? "text-red-400" : "text-emerald-400"
+              mesSelecionadoForex.resultadoConvertidoBRL < 0
+                ? "text-red-400"
+                : "text-emerald-400"
             }`}>
-              {formatarMoeda(mesSelecionadoForex.resultadoConvertidoBRL)}
+              {mesSelecionadoForex.resultadoConvertidoBRL < 0 && "-"}
+              {formatarMoeda(Math.abs(mesSelecionadoForex.resultadoConvertidoBRL))}
             </p>
           </div>
           {mesSelecionadoForex.resultadoConvertidoBRL >= 0 ? (
@@ -460,7 +476,16 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
-      {/* Cards Forex */}
+      {/* ← NOVO: Gráfico Forex */}
+      <GraficoCandlesForex
+        relatorios={relatoriosForexRaw}
+        mesSelecionado={{
+          ano: mesSelecionadoForex.ano,
+          mes: mesSelecionadoForex.mesNumero,
+        }}
+      />
+
+      {/* Cards linha 1 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <CardResumoValor
           titulo="Resultado (USD)"
@@ -506,7 +531,7 @@ export default function DashboardHomePage() {
   return (
     <>
       {/* ============================================================
-          MOBILE  (< lg) — layout em coluna única, scroll normal
+          MOBILE  (< lg)
       ============================================================ */}
       <div className="flex flex-col gap-4 px-4 py-4 lg:hidden">
 
@@ -581,7 +606,7 @@ export default function DashboardHomePage() {
       </div>
 
       {/* ============================================================
-          DESKTOP (>= lg) — duas colunas, sem scroll
+          DESKTOP (>= lg)
       ============================================================ */}
       <div className="hidden h-[calc(100vh-56px)] gap-4 overflow-hidden px-4 py-4 lg:flex">
 
@@ -650,8 +675,8 @@ export default function DashboardHomePage() {
           </div>
         </div>
 
-        {/* Coluna direita */}
-        <div className="flex flex-1 flex-col gap-3 overflow-hidden">
+        {/* Coluna direita — scroll interno */}
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
           {seletorMeses}
           {mercadoSelecionado === "b3" ? conteudoB3 : conteudoForex}
         </div>

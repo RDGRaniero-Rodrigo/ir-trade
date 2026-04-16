@@ -1,0 +1,229 @@
+.planos-page {
+  min-height: 100vh;
+  background-color: #0d1b2a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  font-family: sans-serif;
+  color: #ffffff;
+}
+
+/* HEADER */
+.planos-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.planos-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.planos-header p {
+  font-size: 1rem;
+  color: #8fa3b1;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* GRID */
+.planos-grid {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* CARD */
+.plano-card {
+  background-color: #0f1f35;
+  border: 1px solid #1e3048;
+  border-radius: 16px;
+  padding: 36px 32px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plano-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 196, 125, 0.1);
+}
+
+.plano-card.destaque {
+  border-color: #00c47d;
+  box-shadow: 0 0 24px rgba(0, 196, 125, 0.15);
+}
+
+/* POPULAR TAG */
+.plano-popular {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #00c47d;
+  color: #0d1b2a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 16px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+/* BADGE */
+.plano-badge {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #8fa3b1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plano-badge.verde {
+  color: #00c47d;
+}
+
+/* PREÇO */
+.plano-preco {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1;
+  flex-wrap: wrap;
+}
+
+.cifrao {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 8px;
+  color: #ffffff;
+}
+
+.valor {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.centavos {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 10px;
+  color: #ffffff;
+}
+
+.periodo {
+  font-size: 0.9rem;
+  color: #8fa3b1;
+  align-self: flex-end;
+  margin-bottom: 6px;
+  margin-left: 4px;
+}
+
+/* ECONOMIA */
+.plano-economia {
+  background-color: rgba(0, 196, 125, 0.1);
+  border: 1px solid rgba(0, 196, 125, 0.3);
+  color: #00c47d;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* FEATURES */
+.plano-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.plano-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: #cdd9e5;
+}
+
+.plano-features li.sub-item {
+  padding-left: 28px;
+  color: #8fa3b1;
+  font-size: 0.85rem;
+}
+
+.check {
+  color: #00c47d;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.dot {
+  color: #00c47d;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* BOTÕES */
+.plano-btn {
+  display: block;
+  text-align: center;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+  margin-top: auto;
+}
+
+.plano-btn:hover {
+  opacity: 0.88;
+  transform: scale(1.02);
+}
+
+.plano-btn.outline {
+  border: 2px solid #00c47d;
+  color: #00c47d;
+  background-color: transparent;
+}
+
+.plano-btn.verde {
+  background-color: #00c47d;
+  color: #0d1b2a;
+  border: 2px solid #00c47d;
+}
+
+/* FOOTER */
+.planos-footer {
+  margin-top: 40px;
+  font-size: 0.82rem;
+  color: #4a6070;
+  text-align: center;
+}
+
+/* RESPONSIVO */
+@media (max-width: 700px) {
+  .planos-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .plano-card {
+    width: 100%;
+    max-width: 360px;
+  }
+}

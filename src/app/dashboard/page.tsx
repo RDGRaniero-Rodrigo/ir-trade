@@ -24,11 +24,12 @@ import {
 import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
 import { GraficoCandlesForex } from "@/components/dashboard/GraficoCandlesForex";
 import { UploadInline } from "@/components/dashboard/UploadInline";
+import DashboardNotasPage from "@/features/dashboard-notas/DashboardNotasPage"; // ✅ NOVO
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type MercadoSelecionado = "b3" | "forex";
-type ViewMode = "dashboard" | "upload";
+type ViewMode = "dashboard" | "upload" | "notas"; // ✅ adicionado "notas"
 
 type NotaSalva = {
   id: string;
@@ -380,7 +381,6 @@ export default function DashboardHomePage() {
     </div>
   ) : (
     <div className="flex flex-col gap-3">
-      {/* Resultado */}
       <div className="rounded-[12px] border border-slate-700 bg-[#061538] px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
@@ -405,13 +405,11 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
-      {/* Gráfico B3 */}
       <GraficoCandlesMensal
         notas={notasB3}
         mesSelecionado={{ ano: mesSelecionadoB3.ano, mes: mesSelecionadoB3.mes }}
       />
 
-      {/* Cards linha 1 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <CardResumoValor
           titulo="Valor dos Negócios"
@@ -434,7 +432,6 @@ export default function DashboardHomePage() {
         />
       </div>
 
-      {/* Cards linha 2 */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <CardResumoValor
           titulo="Prejuízo Acumulado"
@@ -473,7 +470,6 @@ export default function DashboardHomePage() {
     </div>
   ) : (
     <div className="flex flex-col gap-3">
-      {/* Resultado Forex */}
       <div className="rounded-[12px] border border-slate-700 bg-[#061538] px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
@@ -500,7 +496,6 @@ export default function DashboardHomePage() {
         </div>
       </div>
 
-      {/* Gráfico Forex */}
       <GraficoCandlesForex
         relatorios={relatoriosForexRaw}
         mesSelecionado={{
@@ -509,7 +504,6 @@ export default function DashboardHomePage() {
         }}
       />
 
-      {/* Cards linha 1 */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <CardResumoValor
           titulo="Resultado (USD)"
@@ -552,7 +546,7 @@ export default function DashboardHomePage() {
     </div>
   );
 
-  // ─── Conteúdo principal (dashboard ou upload) ──────────────────────────────
+  // ─── Conteúdo principal ────────────────────────────────────────────────────
 
   const conteudoPrincipal =
     viewMode === "upload" ? (
@@ -560,6 +554,8 @@ export default function DashboardHomePage() {
         onClose={() => setViewMode("dashboard")}
         onUploadSuccess={handleUploadSuccess}
       />
+    ) : viewMode === "notas" ? (       // ✅ NOVO: renderiza notas inline
+      <DashboardNotasPage />
     ) : mercadoSelecionado === "b3" ? (
       conteudoB3
     ) : (
@@ -568,6 +564,20 @@ export default function DashboardHomePage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
+  // ─── Helpers de estilo dos botões de acesso rápido ────────────────────────
+
+  function estiloAcessoRapidoDesktop(modo: ViewMode) {
+    return viewMode === modo
+      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+      : "border-slate-800 bg-[#061538] text-slate-300 hover:border-emerald-500/50 hover:bg-[#081733]";
+  }
+
+  function estiloAcessoRapidoMobile(modo: ViewMode) {
+    return viewMode === modo
+      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+      : "border-slate-800 bg-[#061538] text-slate-300 hover:border-emerald-500/50";
+  }
+
   return (
     <>
       {/* ============================================================
@@ -575,7 +585,6 @@ export default function DashboardHomePage() {
       ============================================================ */}
       <div className="flex flex-col gap-4 px-4 py-4 lg:hidden">
 
-        {/* Header */}
         <div>
           <p className="text-[10px] uppercase tracking-widest text-slate-500">Dashboard</p>
           <h1 className="mt-0.5 text-xl font-bold leading-tight">Resumo das Operações</h1>
@@ -584,7 +593,6 @@ export default function DashboardHomePage() {
           </p>
         </div>
 
-        {/* Botões de Mercado */}
         <div className="flex gap-2">
           <Button
             onClick={() => handleMudarMercado("b3")}
@@ -610,10 +618,8 @@ export default function DashboardHomePage() {
           </Button>
         </div>
 
-        {/* Seletor de meses — esconde durante upload */}
         {viewMode === "dashboard" && seletorMeses}
 
-        {/* Conteúdo principal */}
         {conteudoPrincipal}
 
         {/* Links rápidos */}
@@ -622,25 +628,22 @@ export default function DashboardHomePage() {
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setViewMode("upload")}
-              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] text-slate-300 transition ${
-                viewMode === "upload"
-                  ? "border-emerald-500/50 bg-emerald-500/10"
-                  : "border-slate-800 bg-[#061538] hover:border-emerald-500/50"
-              }`}
+              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("upload")}`}
             >
               <FileText className="h-4 w-4 text-emerald-400" />
               Importar Nota
             </button>
             <button
               onClick={() => setViewMode("dashboard")}
-              className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-800 bg-[#061538] px-2 py-3 text-center text-[10px] text-slate-300 transition hover:border-emerald-500/50"
+              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("dashboard")}`}
             >
               <BarChart3 className="h-4 w-4 text-cyan-400" />
               Resumo Mensal
             </button>
+            {/* ✅ CORRIGIDO */}
             <button
-              onClick={() => setViewMode("dashboard")}
-              className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-800 bg-[#061538] px-2 py-3 text-center text-[10px] text-slate-300 transition hover:border-emerald-500/50"
+              onClick={() => setViewMode("notas")}
+              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("notas")}`}
             >
               <Receipt className="h-4 w-4 text-violet-400" />
               Notas Salvas
@@ -700,42 +703,36 @@ export default function DashboardHomePage() {
 
             <button
               onClick={() => setViewMode("upload")}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${
-                viewMode === "upload"
-                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-                  : "border-slate-800 bg-[#061538] hover:border-emerald-500/50 hover:bg-[#081733]"
-              }`}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("upload")}`}
             >
               <FileText className="h-3.5 w-3.5 flex-shrink-0 text-emerald-400" />
-              <span className={viewMode === "upload" ? "text-emerald-400" : "text-slate-300"}>
-                Importar Nota
-              </span>
+              <span>Importar Nota</span>
             </button>
 
             <button
               onClick={() => setViewMode("dashboard")}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("dashboard")}`}
             >
               <BarChart3 className="h-3.5 w-3.5 flex-shrink-0 text-cyan-400" />
-              <span className="text-slate-300">Resumo Mensal</span>
+              <span>Resumo Mensal</span>
             </button>
 
+            {/* ✅ CORRIGIDO */}
             <button
-              onClick={() => setViewMode("dashboard")}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
+              onClick={() => setViewMode("notas")}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("notas")}`}
             >
               <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-violet-400" />
-              <span className="text-slate-300">Notas Salvas</span>
+              <span>Notas Salvas</span>
             </button>
           </div>
         </div>
 
-        {/* Coluna direita — scroll interno */}
+        {/* Coluna direita */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-          {/* Seletor de meses — esconde durante upload */}
+          {/* Seletor de meses — só no modo dashboard */}
           {viewMode === "dashboard" && seletorMeses}
 
-          {/* Conteúdo principal */}
           {conteudoPrincipal}
         </div>
       </div>

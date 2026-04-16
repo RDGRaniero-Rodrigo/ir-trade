@@ -297,24 +297,23 @@ export default function DashboardHomePage() {
   }
 
   return (
-    // Layout principal: duas colunas lado a lado
-    <div className="flex h-[calc(100vh-0px)] gap-4 overflow-hidden px-4 py-4">
+    <div className="flex h-[calc(100vh-56px)] gap-4 overflow-hidden px-4 py-4">
 
-      {/* ====== COLUNA ESQUERDA — Header + Mercado + Meses ====== */}
-      <div className="flex w-52 flex-shrink-0 flex-col gap-3">
+      {/* ======= COLUNA ESQUERDA ======= */}
+      <div className="flex w-48 flex-shrink-0 flex-col gap-3">
 
         {/* Header */}
         <div>
           <p className="text-[10px] uppercase tracking-widest text-slate-500">Dashboard</p>
-          <h1 className="mt-0.5 text-lg font-bold tracking-tight leading-tight">
+          <h1 className="mt-0.5 text-lg font-bold leading-tight tracking-tight">
             Resumo das<br />Operações
           </h1>
-          <p className="mt-1 text-[11px] text-slate-400 leading-snug">
+          <p className="mt-1 text-[11px] leading-snug text-slate-400">
             Acompanhe o resultado das suas operações e o imposto a pagar.
           </p>
         </div>
 
-        {/* Seletor de Mercado */}
+        {/* Botões de Mercado */}
         <div className="flex flex-col gap-1.5">
           <Button
             onClick={() => handleMudarMercado("b3")}
@@ -340,71 +339,76 @@ export default function DashboardHomePage() {
           </Button>
         </div>
 
-        {/* Seletor de Meses */}
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-            Selecione o mês
-          </p>
-          <div className="flex flex-col gap-1 overflow-y-auto">
-            {mercadoSelecionado === "b3" &&
-              resumosMensaisB3.map((mes) => (
-                <button
-                  key={mes.chave}
-                  onClick={() => handleSelecionarMes(mes.chave)}
-                  className={`h-8 w-full rounded-lg px-3 text-left text-xs font-medium transition ${
-                    chaveMesSelecionado === mes.chave
-                      ? "bg-emerald-500 text-white"
-                      : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
-                  }`}
-                >
-                  {mes.label}
-                </button>
-              ))}
-            {mercadoSelecionado === "forex" &&
-              resumosForex.map((mes) => (
-                <button
-                  key={mes.chave}
-                  onClick={() => handleSelecionarMes(mes.chave)}
-                  className={`h-8 w-full rounded-lg px-3 text-left text-xs font-medium transition ${
-                    chaveMesSelecionado === mes.chave
-                      ? "bg-emerald-500 text-white"
-                      : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
-                  }`}
-                >
-                  {mes.mes}
-                </button>
-              ))}
-          </div>
-        </div>
+        {/* Divisor */}
+        <div className="border-t border-slate-700/50" />
 
-        {/* Links rápidos na base */}
-        <div className="mt-auto flex flex-col gap-1.5">
+        {/* Links Rápidos */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">Acesso rápido</p>
           <Link
             href="/dashboard/upload"
             className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
           >
-            <FileText className="h-3.5 w-3.5 text-emerald-400" />
+            <FileText className="h-3.5 w-3.5 flex-shrink-0 text-emerald-400" />
             <span className="text-slate-300">Importar Nota</span>
           </Link>
           <Link
             href="/dashboard/upload?aba=mensal"
             className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
           >
-            <BarChart3 className="h-3.5 w-3.5 text-cyan-400" />
+            <BarChart3 className="h-3.5 w-3.5 flex-shrink-0 text-cyan-400" />
             <span className="text-slate-300">Resumo Mensal</span>
           </Link>
           <Link
             href="/dashboard/upload?aba=notas"
             className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#061538] px-3 py-2 text-xs transition hover:border-emerald-500/50 hover:bg-[#081733]"
           >
-            <Receipt className="h-3.5 w-3.5 text-violet-400" />
+            <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-violet-400" />
             <span className="text-slate-300">Notas Salvas</span>
           </Link>
         </div>
+
       </div>
 
-      {/* ====== COLUNA DIREITA — Conteúdo principal ====== */}
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+      {/* ======= COLUNA DIREITA ======= */}
+      <div className="flex flex-1 flex-col gap-3 overflow-hidden">
+
+        {/* ---- Seletor de Meses (topo da coluna direita) ---- */}
+        {mercadoSelecionado === "b3" && resumosMensaisB3.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {resumosMensaisB3.map((mes) => (
+              <button
+                key={mes.chave}
+                onClick={() => handleSelecionarMes(mes.chave)}
+                className={`h-8 rounded-lg px-3 text-xs font-medium transition ${
+                  chaveMesSelecionado === mes.chave
+                    ? "bg-emerald-500 text-white"
+                    : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                }`}
+              >
+                {mes.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mercadoSelecionado === "forex" && resumosForex.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {resumosForex.map((mes) => (
+              <button
+                key={mes.chave}
+                onClick={() => handleSelecionarMes(mes.chave)}
+                className={`h-8 rounded-lg px-3 text-xs font-medium transition ${
+                  chaveMesSelecionado === mes.chave
+                    ? "bg-emerald-500 text-white"
+                    : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                }`}
+              >
+                {mes.mes}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ==================== B3 ==================== */}
         {mercadoSelecionado === "b3" && (
@@ -424,21 +428,19 @@ export default function DashboardHomePage() {
               </div>
             ) : (
               <>
-                {/* Título + Resultado */}
-                <div className="rounded-[14px] border border-slate-700 bg-[#061538] px-4 py-3">
+                {/* Resultado do Mês */}
+                <div className="rounded-[12px] border border-slate-700 bg-[#061538] px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500">
                         {mesSelecionadoB3.label}
                         <span className="ml-2 normal-case text-slate-600">
                           · {mesSelecionadoB3.quantidade} nota(s)
                         </span>
                       </p>
-                      <p
-                        className={`mt-0.5 text-2xl font-bold ${
-                          mesSelecionadoB3.liquido < 0 ? "text-red-400" : "text-emerald-400"
-                        }`}
-                      >
+                      <p className={`mt-0.5 text-2xl font-bold ${
+                        mesSelecionadoB3.liquido < 0 ? "text-red-400" : "text-emerald-400"
+                      }`}>
                         {mesSelecionadoB3.liquido < 0 && "-"}
                         {formatarMoeda(Math.abs(mesSelecionadoB3.liquido))}
                       </p>
@@ -523,22 +525,18 @@ export default function DashboardHomePage() {
             ) : (
               <>
                 {/* Resultado Forex */}
-                <div className="rounded-[14px] border border-slate-700 bg-[#061538] px-4 py-3">
+                <div className="rounded-[12px] border border-slate-700 bg-[#061538] px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500">
                         {mesSelecionadoForex.mes}
                         <span className="ml-2 normal-case text-slate-600">
                           · {mesSelecionadoForex.quantidadeRelatorios} relatório(s)
                         </span>
                       </p>
-                      <p
-                        className={`mt-0.5 text-2xl font-bold ${
-                          mesSelecionadoForex.resultadoConvertidoBRL < 0
-                            ? "text-red-400"
-                            : "text-emerald-400"
-                        }`}
-                      >
+                      <p className={`mt-0.5 text-2xl font-bold ${
+                        mesSelecionadoForex.resultadoConvertidoBRL < 0 ? "text-red-400" : "text-emerald-400"
+                      }`}>
                         {formatarMoeda(mesSelecionadoForex.resultadoConvertidoBRL)}
                       </p>
                     </div>
@@ -594,6 +592,7 @@ export default function DashboardHomePage() {
             )}
           </>
         )}
+
       </div>
     </div>
   );

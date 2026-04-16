@@ -47,25 +47,27 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
   if (candles.length === 0) return null;
 
   const maxAbsoluto = Math.max(...candles.map((c) => Math.abs(c.valor)));
-  const ALTURA_MAX = 80;
-  const LARGURA_CANDLE = 28;
-  const CORPO_W = 14;
+
+  // ✅ Altura reduzida para caber na tela
+  const ALTURA_MAX = 50;
+  const LARGURA_CANDLE = 24;
+  const CORPO_W = 12;
   const WICK_W = 2;
 
   return (
-    <div className="rounded-[14px] border border-slate-700/60 bg-[#161b22] overflow-hidden">
-      {/* Header do gráfico */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/40">
+    <div className="rounded-[12px] border border-slate-700/60 bg-[#161b22] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/40">
         <div>
           <p className="text-xs font-semibold text-slate-200">Resultado por Dia</p>
           <p className="text-[10px] text-slate-500">Cada candle = 1 dia com nota importada</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <div className="h-2 w-2 rounded-sm bg-[#26a69a]" />
             <span className="text-[10px] text-slate-400">Positivo</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <div className="h-2 w-2 rounded-sm bg-[#ef5350]" />
             <span className="text-[10px] text-slate-400">Negativo</span>
           </div>
@@ -73,13 +75,17 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
       </div>
 
       {/* Área do gráfico */}
-      <div className="relative overflow-x-auto px-4 py-3" style={{ background: '#161b22' }}>
-        {/* Linhas de grade horizontais */}
-        <div className="absolute inset-x-4 pointer-events-none" style={{ top: 12, height: ALTURA_MAX * 2 }}>
-          {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
+      <div className="relative overflow-x-auto px-3 py-2" style={{ background: '#161b22' }}>
+
+        {/* Linhas de grade */}
+        <div
+          className="absolute inset-x-3 pointer-events-none"
+          style={{ top: 8, height: ALTURA_MAX * 2 }}
+        >
+          {[0, 0.5, 1].map((frac) => (
             <div
               key={frac}
-              className="absolute left-0 right-0 border-t border-slate-700/30"
+              className="absolute left-0 right-0 border-t border-slate-700/25"
               style={{ top: `${frac * 100}%` }}
             />
           ))}
@@ -88,33 +94,36 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
         <div
           className="relative flex items-end gap-0.5"
           style={{
-            height: ALTURA_MAX * 2 + 20,
+            height: ALTURA_MAX * 2 + 18,
             minWidth: candles.length * (LARGURA_CANDLE + 2),
           }}
         >
           {candles.map((candle) => {
             const positivo = candle.valor >= 0;
-            const alturaCorpo = maxAbsoluto > 0
-              ? Math.max(4, Math.round((Math.abs(candle.valor) / maxAbsoluto) * ALTURA_MAX))
-              : 4;
-            const alturaWick = Math.min(alturaCorpo * 0.3, 8);
+            const alturaCorpo =
+              maxAbsoluto > 0
+                ? Math.max(3, Math.round((Math.abs(candle.valor) / maxAbsoluto) * ALTURA_MAX))
+                : 3;
+            const alturaWick = Math.min(alturaCorpo * 0.25, 6);
 
             const corCorpo = positivo ? '#26a69a' : '#ef5350';
             const corWick = positivo ? '#1a7a75' : '#b03030';
-
-            // Posição Y do candle
-            const centroY = ALTURA_MAX; // linha do zero
+            const centroY = ALTURA_MAX;
 
             return (
               <div
                 key={candle.dia}
                 className="group relative flex-shrink-0 flex flex-col items-center cursor-pointer"
-                style={{ width: LARGURA_CANDLE, height: ALTURA_MAX * 2 + 20 }}
+                style={{ width: LARGURA_CANDLE, height: ALTURA_MAX * 2 + 18 }}
               >
                 {/* Tooltip */}
                 <div
-                  className="pointer-events-none absolute z-30 hidden group-hover:flex flex-col items-center rounded-lg border border-slate-600 bg-[#1e2530] px-2.5 py-1.5 shadow-xl"
-                  style={{ bottom: ALTURA_MAX * 2 + 28, left: '50%', transform: 'translateX(-50%)' }}
+                  className="pointer-events-none absolute z-30 hidden group-hover:flex flex-col items-center rounded-lg border border-slate-600 bg-[#1e2530] px-2 py-1.5 shadow-xl"
+                  style={{
+                    bottom: ALTURA_MAX * 2 + 24,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                  }}
                 >
                   <p className="whitespace-nowrap text-[10px] font-semibold text-slate-300">
                     Dia {String(candle.dia).padStart(2, '0')}
@@ -124,7 +133,7 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                   </p>
                 </div>
 
-                {/* SVG do Candle */}
+                {/* SVG Candle */}
                 <svg
                   width={LARGURA_CANDLE}
                   height={ALTURA_MAX * 2}
@@ -133,7 +142,6 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                 >
                   {positivo ? (
                     <>
-                      {/* Wick superior */}
                       <rect
                         x={(LARGURA_CANDLE - WICK_W) / 2}
                         y={centroY - alturaCorpo - alturaWick}
@@ -142,7 +150,6 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                         fill={corWick}
                         rx={1}
                       />
-                      {/* Corpo */}
                       <rect
                         x={(LARGURA_CANDLE - CORPO_W) / 2}
                         y={centroY - alturaCorpo}
@@ -150,12 +157,11 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                         height={alturaCorpo}
                         fill={corCorpo}
                         rx={2}
-                        className="transition-all duration-150 group-hover:opacity-80"
+                        className="transition-opacity duration-150 group-hover:opacity-75"
                       />
                     </>
                   ) : (
                     <>
-                      {/* Corpo */}
                       <rect
                         x={(LARGURA_CANDLE - CORPO_W) / 2}
                         y={centroY}
@@ -163,9 +169,8 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                         height={alturaCorpo}
                         fill={corCorpo}
                         rx={2}
-                        className="transition-all duration-150 group-hover:opacity-80"
+                        className="transition-opacity duration-150 group-hover:opacity-75"
                       />
-                      {/* Wick inferior */}
                       <rect
                         x={(LARGURA_CANDLE - WICK_W) / 2}
                         y={centroY + alturaCorpo}
@@ -187,10 +192,10 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
                   />
                 </svg>
 
-                {/* Label do dia */}
+                {/* Label dia */}
                 <span
                   className="absolute text-[9px] font-medium text-slate-600"
-                  style={{ bottom: 2 }}
+                  style={{ bottom: 1 }}
                 >
                   {String(candle.dia).padStart(2, '0')}
                 </span>
@@ -201,7 +206,7 @@ export function GraficoCandlesMensal({ notas, mesSelecionado }: GraficoCandlesMe
       </div>
 
       {/* Rodapé */}
-      <div className="flex items-center justify-end border-t border-slate-700/30 px-4 py-1.5">
+      <div className="flex items-center justify-end border-t border-slate-700/30 px-3 py-1">
         <span className="text-[10px] text-slate-600">
           {candles.length} dia{candles.length !== 1 ? 's' : ''} com operação no mês
         </span>

@@ -90,17 +90,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    const { error } = await supabase
-      .from("profiles")
-      .upsert(updateData, { onConflict: "email" });
+    const { data: existingUser } = await supabase
+  .from("profiles")
+  .select("id")
+  .eq("email", email)
+  .single();
 
-    if (error) {
-      console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
-      return NextResponse.json(
-        { error: "Erro ao salvar no banco", details: error.message },
-        { status: 500 }
-      );
-    }
+let error;
+
+if (existingUser) {
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update(updateData)
+    .eq("email", email);
+  error = updateError;
+} else {
+  const { error: insertError } = await supabase
+    .from("profiles")
+    .insert(updateData);
+  error = insertError;
+}
+
+if (error) {
+  console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
+  return NextResponse.json(
+    { error: "Erro ao salvar no banco", details: error.message },
+    { status: 500 }
+  );
+}
+
 
     console.log(`✅ Webhook OK: ${event} - ${email}`);
     return NextResponse.json({ success: true }, { status: 200 });

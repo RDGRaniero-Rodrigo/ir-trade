@@ -39,16 +39,22 @@ export async function middleware(request: NextRequest) {
 
   // ✅ Logado no dashboard → verificar assinatura ativa
   if (user && pathname.startsWith("/dashboard")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("pago, status_assinatura, data_expiracao")
-      .eq("email", user.email)
-      .single();
+    const { data: profile, error } = await supabase
+  .from("profiles")
+  .select("pago, status_assinatura, data_expiracao")
+  .eq("email", user.email)
+  .single();
+
+console.log("USER EMAIL:", user.email);
+console.log("PROFILE:", profile);
+console.log("ERROR:", error);
+
 
     const expirado =
-      profile?.data_expiracao
-        ? new Date(profile.data_expiracao) < new Date()
-        : true;
+  profile?.data_expiracao
+    ? new Date(profile.data_expiracao) < new Date()
+    : false; // ← NULL = sem expiração = acesso liberado ✅
+
 
     const semAcesso =
       !profile?.pago ||

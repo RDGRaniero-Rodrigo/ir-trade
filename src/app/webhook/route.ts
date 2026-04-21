@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Usa SERVICE_ROLE para bypass do RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -14,18 +13,29 @@ export async function POST(req: NextRequest) {
     const event: string = body?.event;
     const data = body?.data;
 
+    // 👤 Dados do comprador
     const email: string = data?.buyer?.email;
+    const nome: string = data?.buyer?.name;
+    const sobrenome: string = data?.buyer?.last_name;
+    const cpf: string = data?.buyer?.doc;
+    const ddd: string = data?.buyer?.phone_checkout_local_code || data?.buyer?.phone_local_code;
+    const telefone: string = data?.buyer?.phone_checkout_number || data?.buyer?.phone_number;
+    const whatsapp = ddd && telefone ? `${ddd}${telefone}` : null;
+
+    // 🏠 Endereço
+    const endereco = data?.buyer?.address?.address;
+    const numero_end = data?.buyer?.address?.number;
+    const complemento = data?.buyer?.address?.complement;
+    const bairro = data?.buyer?.address?.neighborhood;
+    const cidade = data?.buyer?.address?.city;
+    const estado = data?.buyer?.address?.state;
+    const cep = data?.buyer?.address?.zip_code;
+
+    // 💳 Dados da compra
     const transaction: string = data?.purchase?.transaction;
-    const plano: string = data?.product?.name;
-
-    const status_assinatura =
-      event === "PURCHASE_APPROVED" ? "active" : "inativo";
-    const pago = event === "PURCHASE_APPROVED";
-
-    const data_pagamento = new Date().toISOString();
-    const data_expiracao = new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000
-    ).toISOString();
+    const plano: string = data?.subscription?.plan?.name || data?.product?.name;
+    const metodo_pagamento: string = data?.purchase?.payment?.type;
+    const valor: number = data?.purchase?.full_price?.value;
 
     if (!email) {
       return NextResponse.json(
@@ -34,20 +44,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let updateData: Record<string, unknown> = {
+      email,
+      nome_completo: `${nome || ""} ${sobrenome || ""}`.trim(),
+      cpf,
+      whatsapp,
+      endereco,
+      numero_end,
+      complemento,
+      bairro,
+      cidade,
+      estado,
+      cep,
+      plano,
+      metodo_pagamento,
+      valor,
+      hotmart_transaction_id: transaction,
+    };
+
+    if (event === "PURCHASE_APPROVED") {
+      updateData = {
+        ...updateData,
+        status_assinatura: "active",
+        pago: true,
+        data_pagamento: new Date().toISOString(),
+        data_expiracao: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      };
+
+    } else if (
+      event === "PURCHASE_CANCELED" ||
+      event === "PURCHASE_REFUNDED" ||
+      event === "SUBSCRIPTION_CANCELLATION"
+    ) {
+      updateData = {
+        ...updateData,
+        status_assinatura: "inativo",
+        pago: false,
+        data_expiracao: new Date().toISOString(),
+      };
+
+    } else {
+      console.log(`⚠️ Evento não tratado: ${event}`);
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
     const { error } = await supabase
       .from("profiles")
-      .upsert(
-        {
-          email,
-          status_assinatura,
-          pago,
-          plano,
-          data_pagamento,
-          data_expiracao,
-          hotmart_transaction_id: transaction,
-        },
-        { onConflict: "email" }
-      );
+      .upsert(updateData, { onConflict: "email" });
 
     if (error) {
       console.error("❌ Erro Supabase:", error);

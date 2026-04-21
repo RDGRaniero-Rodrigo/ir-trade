@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
 
     // 👤 Dados do comprador
     const email: string = data?.buyer?.email;
-    const nome: string = data?.buyer?.name;
+    const nome: string = data?.buyer?.first_name || data?.buyer?.name;
     const sobrenome: string = data?.buyer?.last_name;
-    const cpf: string = data?.buyer?.doc;
-    const ddd: string = data?.buyer?.phone_checkout_local_code || data?.buyer?.phone_local_code;
-    const telefone: string = data?.buyer?.phone_checkout_number || data?.buyer?.phone_number;
+    const cpf: string = data?.buyer?.document; // ✅ corrigido
+    const ddd: string = data?.buyer?.checkout_phone_code;  // ✅ corrigido
+    const telefone: string = data?.buyer?.checkout_phone;  // ✅ corrigido
     const whatsapp = ddd && telefone ? `${ddd}${telefone}` : null;
 
     // 🏠 Endereço
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const bairro = data?.buyer?.address?.neighborhood;
     const cidade = data?.buyer?.address?.city;
     const estado = data?.buyer?.address?.state;
-    const cep = data?.buyer?.address?.zip_code;
+    const cep = data?.buyer?.address?.zipcode; // ✅ corrigido
 
     // 💳 Dados da compra
     const transaction: string = data?.purchase?.transaction;
@@ -95,9 +95,9 @@ export async function POST(req: NextRequest) {
       .upsert(updateData, { onConflict: "email" });
 
     if (error) {
-      console.error("❌ Erro Supabase:", error);
+      console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
       return NextResponse.json(
-        { error: "Erro ao salvar no banco" },
+        { error: "Erro ao salvar no banco", details: error.message },
         { status: 500 }
       );
     }
@@ -110,4 +110,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
-

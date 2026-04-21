@@ -27,14 +27,37 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Não logado tentando acessar dashboard → login
+  // ✅ Não logado tentando acessar dashboard → login
   if (!user && pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Já logado tentando acessar /login → dashboard
+  // ✅ Já logado tentando acessar /login → dashboard
   if (user && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // ✅ Logado no dashboard → verificar assinatura ativa
+  if (user && pathname.startsWith("/dashboard")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("pago, status_assinatura, data_expiracao")
+      .eq("email", user.email)
+      .single();
+
+    const expirado =
+      profile?.data_expiracao
+        ? new Date(profile.data_expiracao) < new Date()
+        : true;
+
+    const semAcesso =
+      !profile?.pago ||
+      profile?.status_assinatura !== "active" ||
+      expirado;
+
+    if (semAcesso) {
+      return NextResponse.redirect(new URL("/planos", request.url));
+    }
   }
 
   return response;

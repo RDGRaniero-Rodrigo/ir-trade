@@ -10,6 +10,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    console.log("📦 Payload completo:", JSON.stringify(body, null, 2));
+
     const event: string = body?.event;
     const data = body?.data;
 
@@ -17,9 +19,9 @@ export async function POST(req: NextRequest) {
     const email: string = data?.buyer?.email;
     const nome: string = data?.buyer?.first_name || data?.buyer?.name;
     const sobrenome: string = data?.buyer?.last_name;
-    const cpf: string = data?.buyer?.document; // ✅ corrigido
-    const ddd: string = data?.buyer?.checkout_phone_code;  // ✅ corrigido
-    const telefone: string = data?.buyer?.checkout_phone;  // ✅ corrigido
+    const cpf: string = data?.buyer?.document;
+    const ddd: string = data?.buyer?.checkout_phone_code;
+    const telefone: string = data?.buyer?.checkout_phone;
     const whatsapp = ddd && telefone ? `${ddd}${telefone}` : null;
 
     // 🏠 Endereço
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     const bairro = data?.buyer?.address?.neighborhood;
     const cidade = data?.buyer?.address?.city;
     const estado = data?.buyer?.address?.state;
-    const cep = data?.buyer?.address?.zipcode; // ✅ corrigido
+    const cep = data?.buyer?.address?.zipcode;
 
     // 💳 Dados da compra
     const transaction: string = data?.purchase?.transaction;
@@ -72,7 +74,6 @@ export async function POST(req: NextRequest) {
           Date.now() + 30 * 24 * 60 * 60 * 1000
         ).toISOString(),
       };
-
     } else if (
       event === "PURCHASE_CANCELED" ||
       event === "PURCHASE_REFUNDED" ||
@@ -84,41 +85,39 @@ export async function POST(req: NextRequest) {
         pago: false,
         data_expiracao: new Date().toISOString(),
       };
-
     } else {
       console.log(`⚠️ Evento não tratado: ${event}`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
     const { data: existingUser } = await supabase
-  .from("profiles")
-  .select("id")
-  .eq("email", email)
-  .single();
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .single();
 
-let error;
+    let error;
 
-if (existingUser) {
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update(updateData)
-    .eq("email", email);
-  error = updateError;
-} else {
-  const { error: insertError } = await supabase
-    .from("profiles")
-    .insert(updateData);
-  error = insertError;
-}
+    if (existingUser) {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("email", email);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from("profiles")
+        .insert(updateData);
+      error = insertError;
+    }
 
-if (error) {
-  console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
-  return NextResponse.json(
-    { error: "Erro ao salvar no banco", details: error.message },
-    { status: 500 }
-  );
-}
-
+    if (error) {
+      console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
+      return NextResponse.json(
+        { error: "Erro ao salvar no banco", details: error.message },
+        { status: 500 }
+      );
+    }
 
     console.log(`✅ Webhook OK: ${event} - ${email}`);
     return NextResponse.json({ success: true }, { status: 200 });

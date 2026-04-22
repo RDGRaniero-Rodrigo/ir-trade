@@ -9,7 +9,6 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
     console.log("📦 Payload completo:", JSON.stringify(body, null, 2));
 
     const event: string = body?.event;
@@ -44,6 +43,33 @@ export async function POST(req: NextRequest) {
         { error: "Email não encontrado no payload" },
         { status: 400 }
       );
+    }
+
+    // ✅ NOVO: Cria ou verifica usuário no Supabase Auth
+    const { data: authData, error: authError } =
+      await supabase.auth.admin.createUser({
+        email: email,
+        password: cpf || "IrTrade@2024",
+        email_confirm: true,
+      });
+
+    if (authError && !authError.message.includes("already been registered")) {
+      console.error("❌ Erro ao criar usuário no Auth:", authError.message);
+      return NextResponse.json(
+        { error: "Erro ao criar usuário no Auth" },
+        { status: 500 }
+      );
+    }
+
+    // Pega o ID do usuário criado ou busca o existente
+    let userId = authData?.user?.id;
+
+    if (!userId) {
+      // Usuário já existia no Auth, busca o ID dele
+      const { data: existingAuth } =
+        await supabase.auth.admin.listUsers();
+      const found = existingAuth?.users?.find((u) => u.email === email);
+      userId = found?.id;
     }
 
     let updateData: Record<string, unknown> = {
@@ -90,6 +116,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
+    // ✅ Verifica se já existe no profiles
     const { data: existingUser } = await supabase
       .from("profiles")
       .select("id")
@@ -99,15 +126,17 @@ export async function POST(req: NextRequest) {
     let error;
 
     if (existingUser) {
+      // Atualiza sem mexer no ID
       const { error: updateError } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("email", email);
       error = updateError;
     } else {
+      // Insere linkando com o Auth pelo ID
       const { error: insertError } = await supabase
         .from("profiles")
-        .insert(updateData);
+        .insert({ ...updateData, id: userId });
       error = insertError;
     }
 
@@ -121,7 +150,6 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Webhook OK: ${event} - ${email}`);
     return NextResponse.json({ success: true }, { status: 200 });
-
   } catch (err) {
     console.error("❌ Erro no webhook:", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

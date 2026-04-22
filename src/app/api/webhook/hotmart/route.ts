@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Cria ou verifica usuário no Supabase Auth
+    // ✅ Cria ou busca usuário no Supabase Auth
+    let userId: string | undefined;
+
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
         email: email,
@@ -53,7 +55,18 @@ export async function POST(req: NextRequest) {
         email_confirm: true,
       });
 
-    if (authError && !authError.message.includes("already been registered")) {
+    if (authData?.user?.id) {
+      // Usuário criado agora
+      userId = authData.user.id;
+    } else if (authError?.message.includes("already been registered")) {
+      // Usuário já existia → busca pelo email
+      const { data: existingUsers } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      const found = existingUsers?.users?.find((u) => u.email === email);
+      userId = found?.id;
+    } else if (authError) {
       console.error("❌ Erro ao criar usuário no Auth:", authError.message);
       return NextResponse.json(
         { error: "Erro ao criar usuário no Auth" },
@@ -61,13 +74,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Pega o ID do usuário criado ou busca o existente
-    let userId = authData?.user?.id;
-
+    // 🚨 Segurança: nunca continua sem userId
     if (!userId) {
-      const { data: existingAuth } = await supabase.auth.admin.listUsers();
-      const found = existingAuth?.users?.find((u) => u.email === email);
-      userId = found?.id;
+      console.error("❌ userId não encontrado para:", email);
+      return NextResponse.json(
+        { error: "Usuário não encontrado no Auth" },
+        { status: 500 }
+      );
     }
 
     let updateData: Record<string, unknown> = {
@@ -116,7 +129,6 @@ export async function POST(req: NextRequest) {
         data_expiracao: new Date().toISOString(),
       };
     } else {
-      // Evento não tratado → retorna 200 pra não ficar em retentativa
       console.log(`⚠️ Evento não tratado: ${event}`);
       return NextResponse.json({ success: true }, { status: 200 });
     }

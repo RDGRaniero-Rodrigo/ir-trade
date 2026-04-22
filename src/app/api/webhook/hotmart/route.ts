@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     const data = body?.data;
 
     // 👤 Dados do comprador
-    const email: string = data?.buyer?.email;
+    const emailRaw: string = data?.buyer?.email;
+    const email = emailRaw?.trim().toLowerCase(); // ✅ normaliza email
     const nome: string = data?.buyer?.first_name || data?.buyer?.name;
     const sobrenome: string = data?.buyer?.last_name;
     const cpf: string = data?.buyer?.document;
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("📧 Email normalizado:", `[${email}]`);
+
     // ✅ Eventos ignorados
     const eventosIgnorados = [
       "PURCHASE_PROTEST",
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ✅ Cria ou busca userId
+    // ✅ Busca userId
     let userId: string | undefined;
 
     // 1️⃣ Tenta criar no Auth
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
     userId = authData?.user?.id;
     console.log("🆔 userId após createUser:", userId);
 
-    // 2️⃣ Busca na tabela profiles (usa maybeSingle em vez de single)
+    // 2️⃣ Busca na tabela profiles
     if (!userId) {
       console.log("🔍 Buscando userId na tabela profiles...");
 
@@ -96,43 +99,54 @@ export async function POST(req: NextRequest) {
       console.log("🆔 userId via profiles:", userId);
     }
 
-    // 3️⃣ Busca no Auth via listUsers (com log completo)
+    // 3️⃣ Busca no Auth via listUsers com normalização
     if (!userId) {
       console.log("🔍 Buscando userId via listUsers...");
 
-      let page = 1;
+      const { data: userList, error: listError } =
+        await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
-      while (true) {
-        const { data: userList, error: listError } =
-          await supabase.auth.admin.listUsers({ page, perPage: 1000 });
-
-        if (listError) {
-          console.error("❌ Erro ao listar usuários:", listError.message);
-          break;
-        }
-
+      if (listError) {
+        console.error("❌ Erro ao listar usuários:", listError.message);
+      } else {
+        // 🔎 Loga todos os emails pra comparação
         console.log(
-          `📄 Página ${page}: ${userList?.users?.length} usuários encontrados`
+          "📧 Emails no Auth:",
+          userList?.users?.map((u) => `[${u.email}]`)
         );
 
-        const match = userList?.users?.find((u) => u.email === email);
+        const match = userList?.users?.find(
+          (u) => u.email?.trim().toLowerCase() === email
+        );
 
         if (match) {
           userId = match.id;
           console.log("✅ Usuário encontrado via listUsers:", userId);
-          break;
+        } else {
+          console.log("🔚 Não encontrado. Email buscado:", `[${email}]`);
         }
-
-        if (!userList?.users?.length || userList.users.length < 1000) {
-          console.log("🔚 Fim da lista, usuário não encontrado");
-          break;
-        }
-
-        page++;
       }
     }
 
-    // 🚨 Segurança: nunca continua sem userId
+    // 4️⃣ Última tentativa: getUserById não é possível sem ID,
+    //    então tenta buscar via RPC na tabela auth.users diretamente
+    if (!userId) {
+      console.log("🔍 Tentativa final: buscando via auth.users (RPC)...");
+
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        "get_user_id_by_email",
+        { user_email: email }
+      );
+
+      if (rpcError) {
+        console.log("⚠️ RPC error:", rpcError.message);
+      } else {
+        userId = rpcData;
+        console.log("🆔 userId via RPC:", userId);
+      }
+    }
+
+    // 🚨 Segurança
     if (!userId) {
       console.error("❌ userId não encontrado para:", email);
       return NextResponse.json(
@@ -191,7 +205,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ✅ Upsert — insere ou atualiza pelo email
+    // ✅ Upsert
     const { error: upsertError } = await supabase
       .from("profiles")
       .upsert(

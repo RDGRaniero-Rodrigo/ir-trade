@@ -45,6 +45,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ Trata os eventos não relevantes logo no início
+    const eventosIgnorados = [
+      "PURCHASE_PROTEST",
+      "PURCHASE_DELAYED",
+      "PURCHASE_EXPIRED",
+      "SWITCH_PLAN",
+    ];
+
+    if (eventosIgnorados.includes(event)) {
+      console.log(`⚠️ Evento ignorado: ${event}`);
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
     // ✅ Cria ou busca usuário no Supabase Auth
     let userId: string | undefined;
 
@@ -55,23 +68,58 @@ export async function POST(req: NextRequest) {
         email_confirm: true,
       });
 
-    if (authData?.user?.id) {
-      // Usuário criado agora
-      userId = authData.user.id;
-    } else if (authError?.message.includes("already been registered")) {
-      // Usuário já existia → busca pelo email
-      const { data: existingUsers } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      const found = existingUsers?.users?.find((u) => u.email === email);
-      userId = found?.id;
-    } else if (authError) {
-      console.error("❌ Erro ao criar usuário no Auth:", authError.message);
-      return NextResponse.json(
-        { error: "Erro ao criar usuário no Auth" },
-        { status: 500 }
-      );
+    if (authError) {
+      console.log("⚠️ Auth createUser error:", authError.message);
+    }
+
+    userId = authData?.user?.id;
+    console.log("🆔 userId após createUser:", userId);
+
+    // Se não criou (usuário já existe), busca na tabela profiles
+    if (!userId) {
+      console.log("🔍 Buscando userId na tabela profiles...");
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .single();
+
+      if (profileError) {
+        console.log("⚠️ Erro ao buscar profile:", profileError.message);
+      }
+
+      userId = profileData?.id;
+      console.log("🆔 userId via profiles:", userId);
+    }
+
+    // Última tentativa: listUsers do Auth
+    if (!userId) {
+      console.log("🔍 Buscando userId via listUsers...");
+      let page = 1;
+
+      while (true) {
+        const { data: userList, error: listError } =
+          await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+
+        if (listError) {
+          console.error("❌ Erro ao listar usuários:", listError.message);
+          break;
+        }
+
+        const match = userList?.users?.find((u) => u.email === email);
+        if (match) {
+          userId = match.id;
+          console.log("✅ Usuário encontrado via listUsers:", userId);
+          break;
+        }
+
+        if (!userList?.users?.length || userList.users.length < 1000) {
+          // Última página, não encontrou
+          break;
+        }
+
+        page++;
+      }
     }
 
     // 🚨 Segurança: nunca continua sem userId
@@ -129,36 +177,44 @@ export async function POST(req: NextRequest) {
         data_expiracao: new Date().toISOString(),
       };
     } else {
+      // Evento não mapeado → retorna 200 pra não gerar retentativa
       console.log(`⚠️ Evento não tratado: ${event}`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ✅ Verifica se já existe no profiles
+    // ✅ Verifica se já existe na tabela profiles
     const { data: existingUser } = await supabase
       .from("profiles")
       .select("id")
       .eq("email", email)
       .single();
 
-    let error;
+    let dbError;
 
     if (existingUser) {
+      console.log("🔄 Atualizando profile existente...");
       const { error: updateError } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("email", email);
-      error = updateError;
+      dbError = updateError;
     } else {
+      console.log("➕ Inserindo novo profile...");
       const { error: insertError } = await supabase
         .from("profiles")
         .insert({ ...updateData, id: userId });
-      error = insertError;
+      dbError = insertError;
     }
 
-    if (error) {
-      console.error("❌ Erro Supabase:", error.message, error.details, error.hint);
+    if (dbError) {
+      console.error(
+        "❌ Erro Supabase:",
+        dbError.message,
+        dbError.details,
+        dbError.hint
+      );
       return NextResponse.json(
-        { error: "Erro ao salvar no banco", details: error.message },
+        { error: "Erro ao salvar no banco", details: dbError.message },
         { status: 500 }
       );
     }

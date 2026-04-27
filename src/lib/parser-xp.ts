@@ -44,8 +44,9 @@ function extrairFinanceiroBMF(texto: string, dados: DadosXP): void {
   // Valor dos negócios
   {
     const match = texto.match(
-      /Valor\s+dos\s+neg[oó]cios\s+(?:\d{1,3}(?:\.\d{3})*,\d{2}\s+){4}(\d{1,3}(?:\.\d{3})*,\d{2})\s*[CD]?/i
-    );
+  /(\d{1,3}(?:\.\d{3})*,\d{2})\s+L[ií]quido\s+para\s+\d{2}\/\d{2}\/\d{4}\s+([CD])/i
+);
+
     if (match) {
       const val = parseNumeroBR(match[1]);
       if (val > 0) dados.valorNegocios = val;
@@ -191,7 +192,15 @@ export function extrairDadosXP(textoOriginal: string): DadosXP {
 
   // ─── Cabeçalho: busca APENAS na primeira página ───────────────────────────
   {
-    const match = primeiraPagina.match(/Nr\.\s*nota\s*([0-9.]+)/i);
+   const match = primeiraPagina.match(/C[oó]digo\s+(?:do\s+)?[Cc]liente\s+(\d{4,})/i);
+if (!match) {
+  // fallback: tenta pegar o número após "Cliente" seguido de número grande
+  const match2 = primeiraPagina.match(/Cliente\s+(\d{6,})/i);
+  if (match2) dados.cliente = match2[1];
+} else {
+  dados.cliente = match[1];
+}
+
     if (match) dados.numeroNota = match[1];
   }
   {

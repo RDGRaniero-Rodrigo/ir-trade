@@ -513,9 +513,19 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
         const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
         const ehCsv = file.type === "text/csv" || nome.endsWith(".csv");
 
-        const textoArquivo = (ehEml || ehCsv)
-          ? await file.text()
-          : await extrairTextoDoPDF(file);
+        // ✅ DEPOIS
+let textoArquivo: string;
+
+if (ehEml) {
+  // EML usa latin-1 para preservar o base64 intacto
+  const buffer = await file.arrayBuffer();
+  textoArquivo = new TextDecoder("latin1").decode(buffer);
+} else if (ehCsv) {
+  textoArquivo = await file.text(); // CSV pode ficar em UTF-8
+} else {
+  textoArquivo = await extrairTextoDoPDF(file);
+}
+
 
         const dadosForex = extrairDadosForex(textoArquivo);
         const jaExiste = notasForexSalvas.some(

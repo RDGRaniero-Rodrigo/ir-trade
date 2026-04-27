@@ -29,7 +29,9 @@ export async function extrairTextoDoPDF(file: File, senha?: string) {
       .map((item: any) => item.str)
       .join(" ");
 
-    textoCompleto += " " + textoPagina;
+    // 🔥 MUDANÇA: separa páginas com \f (form feed)
+    // assim o parser sabe onde cada página começa e termina
+    textoCompleto += textoPagina + "\f";
   }
 
   return textoCompleto;

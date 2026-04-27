@@ -336,12 +336,10 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
   const [indiceMesForexAtual, setIndiceMesForexAtual] = useState(0);
   const [carregandoResumoForex, setCarregandoResumoForex] = useState(false);
 
-  // Sync abaAtiva quando abaInicial mudar (ex: clique no botão "Resumo Mensal" na sidebar)
   useEffect(() => {
     setAbaAtiva(abaInicial);
   }, [abaInicial]);
 
-  // Carrega dados e mercado do storage
   useEffect(() => {
     async function carregarDadosIniciais() {
       try {
@@ -361,7 +359,6 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
     carregarDadosIniciais();
   }, []);
 
-  // Calcula resumo mensal Forex
   useEffect(() => {
     async function carregarResumoMensalForex() {
       if (notasForexSalvas.length === 0) {
@@ -499,6 +496,8 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
+  // ✅ CORRIGIDO: usa mercadoSelecionado (state) em vez do localStorage
+  // ✅ CORRIGIDO: aceita CSV como texto puro para Forex
   async function handleLerArquivo() {
     if (!file) { setErro("Selecione um arquivo."); return; }
     try {
@@ -509,12 +508,15 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
       setErrosValidacao([]);
       setAlertasValidacao([]);
 
-      const config = JSON.parse(localStorage.getItem(STORAGE_KEY_CONFIG) || "{}");
-      const mercadoAtual: MercadoSelecionado = config.mercado === "forex" ? "forex" : "b3";
+      if (mercadoSelecionado === "forex") {
+        const nome = file.name.toLowerCase();
+        const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
+        const ehCsv = file.type === "text/csv" || nome.endsWith(".csv");
 
-      if (mercadoAtual === "forex") {
-        const ehEml = file.type === "message/rfc822" || file.name.toLowerCase().endsWith(".eml");
-        const textoArquivo = ehEml ? await file.text() : await extrairTextoDoPDF(file);
+        const textoArquivo = (ehEml || ehCsv)
+          ? await file.text()
+          : await extrairTextoDoPDF(file);
+
         const dadosForex = extrairDadosForex(textoArquivo);
         const jaExiste = notasForexSalvas.some(
           (n) => n.dataRelatorio === dadosForex.dataRelatorio && n.conta === dadosForex.conta
@@ -524,6 +526,7 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
         return;
       }
 
+      // ── B3 ──
       const textoPdf = await extrairTextoDoPDF(file, senhaPdf || undefined);
       const dadosB3 = extrairDadosXP(textoPdf);
       const resultadoValidacao = validarNotaXP(dadosB3);
@@ -690,7 +693,7 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
               <p className="mt-1 text-sm text-slate-300">
                 {mercadoSelecionado === "b3"
                   ? "Envie o PDF da nota de corretagem do mercado Brasil / B3"
-                  : "Envie o arquivo PDF ou EML do mercado Forex / Internacional"}
+                  : "Envie o arquivo PDF, EML ou CSV do mercado Forex / Internacional"}
               </p>
             </div>
 
@@ -699,7 +702,7 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
               <p className="mt-1 text-sm text-slate-300">
                 {mercadoSelecionado === "b3"
                   ? "Faça upload da nota em PDF e informe a senha, se existir."
-                  : "Faça upload do arquivo do mercado Forex. Para EML não é necessária senha."}
+                  : "Faça upload do arquivo do mercado Forex. Para EML e CSV não é necessária senha."}
               </p>
 
               <div className="mt-5">
@@ -764,7 +767,7 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
               </div>
             </div>
 
-            {/* Preview dos dados extraídos */}
+            {/* Preview */}
             {(status === "preview" || status === "duplicate") && (dadosExtraidosB3 || dadosExtraidosForex) && (
               <div className="mt-6 rounded-[20px] border border-slate-800 bg-[#061538] p-4 md:p-5">
                 <h3 className="text-lg font-semibold">Confirmar Dados Extraídos</h3>
@@ -895,7 +898,6 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
                   </div>
                   <div className="mt-4"><DarfMensagem mes={mes} /></div>
                   <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    {/* DARF modelo */}
                     <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                       <div className="flex items-center gap-3">
                         <div className="rounded-full bg-cyan-500/10 p-2 text-cyan-300"><Receipt className="h-4 w-4" /></div>
@@ -928,7 +930,6 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
                         </a>
                       </div>
                     </div>
-                    {/* Passo a passo */}
                     <div className="rounded-[18px] border border-slate-700 bg-[#09152f] p-4">
                       <div className="flex items-center gap-3">
                         <div className="rounded-full bg-violet-500/10 p-2 text-violet-300"><Landmark className="h-4 w-4" /></div>

@@ -16,10 +16,11 @@ export function DropzonePDF({
   const [dragAtivo, setDragAtivo] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
 
-  const aceitaPdf = mercado === "b3";
-  const accept = aceitaPdf
-    ? "application/pdf,.pdf"
-    : "application/pdf,.pdf,message/rfc822,.eml";
+  // ✅ CSV adicionado para Forex
+  const accept =
+    mercado === "b3"
+      ? "application/pdf,.pdf"
+      : "application/pdf,.pdf,message/rfc822,.eml,text/csv,.csv";
 
   function selecionarArquivo(file: File | null) {
     if (!file) return;
@@ -27,14 +28,16 @@ export function DropzonePDF({
     const nome = file.name.toLowerCase();
     const ehPdf = file.type === "application/pdf" || nome.endsWith(".pdf");
     const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
+    const ehCsv = file.type === "text/csv" || nome.endsWith(".csv");
 
     if (mercado === "b3" && !ehPdf) {
       alert("Selecione apenas arquivos PDF.");
       return;
     }
 
-    if (mercado === "forex" && !ehPdf && !ehEml) {
-      alert("Selecione apenas arquivos PDF ou EML.");
+    // ✅ Aceita PDF, EML ou CSV no Forex
+    if (mercado === "forex" && !ehPdf && !ehEml && !ehCsv) {
+      alert("Selecione apenas arquivos PDF, EML ou CSV.");
       return;
     }
 
@@ -50,7 +53,6 @@ export function DropzonePDF({
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragAtivo(false);
-
     const file = e.dataTransfer.files?.[0] ?? null;
     selecionarArquivo(file);
   }
@@ -58,10 +60,7 @@ export function DropzonePDF({
   function limparArquivo() {
     setArquivo(null);
     onFileSelected(null);
-
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   return (
@@ -77,10 +76,7 @@ export function DropzonePDF({
       {!arquivo ? (
         <div
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragAtivo(true);
-          }}
+          onDragOver={(e) => { e.preventDefault(); setDragAtivo(true); }}
           onDragLeave={() => setDragAtivo(false)}
           onDrop={handleDrop}
           className={`flex cursor-pointer flex-col items-center justify-center rounded-[18px] border border-dashed px-6 py-10 text-center transition ${
@@ -92,13 +88,11 @@ export function DropzonePDF({
           <div className="rounded-2xl bg-slate-500/10 p-3 text-slate-300">
             <UploadCloud className="h-8 w-8" />
           </div>
-
           <p className="mt-4 text-sm font-medium text-white md:text-base">
             Clique para selecionar ou arraste o arquivo aqui
           </p>
-
           <p className="mt-1 text-xs text-slate-400 md:text-sm">
-            {mercado === "b3" ? "Apenas arquivos .pdf" : "Arquivos .pdf ou .eml"}
+            {mercado === "b3" ? "Apenas arquivos .pdf" : "Arquivos .pdf, .eml ou .csv"}
           </p>
         </div>
       ) : (
@@ -108,17 +102,13 @@ export function DropzonePDF({
               <div className="rounded-xl bg-red-500/10 p-2 text-red-300">
                 <FileText className="h-5 w-5" />
               </div>
-
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">
-                  {arquivo.name}
-                </p>
+                <p className="truncate text-sm font-medium text-white">{arquivo.name}</p>
                 <p className="text-xs text-slate-400">
                   {(arquivo.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
             </div>
-
             <button
               type="button"
               onClick={limparArquivo}

@@ -152,6 +152,12 @@ function extrairFinanceiroBovespa(texto: string, dados: DadosXP): void {
 }
 
 export function extrairDadosXP(textoOriginal: string): DadosXP {
+  console.log("==== TEXTO BRUTO ====");
+  console.log(textoOriginal);
+  console.log("==== FIM TEXTO ====");
+
+  
+  
   const dados: DadosXP = {
     corretora: detectarCorretora(textoOriginal),
     numeroNota: null,

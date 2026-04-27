@@ -23,13 +23,13 @@ import {
 } from "lucide-react";
 import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
 import { GraficoCandlesForex } from "@/components/dashboard/GraficoCandlesForex";
-import { UploadInline } from "@/components/dashboard/UploadInline";
-import DashboardNotasPage from "@/features/dashboard-notas/DashboardNotasPage"; // ✅ NOVO
+import DashboardUploadPage from "@/features/dashboard-upload/DashboardUploadPage"; // ✅ substituiu UploadInline
+import DashboardNotasPage from "@/features/dashboard-notas/DashboardNotasPage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type MercadoSelecionado = "b3" | "forex";
-type ViewMode = "dashboard" | "upload" | "notas"; // ✅ adicionado "notas"
+type ViewMode = "dashboard" | "upload" | "notas";
 
 type NotaSalva = {
   id: string;
@@ -218,7 +218,8 @@ export default function DashboardHomePage() {
 
   // ─── Após upload bem-sucedido ──────────────────────────────────────────────
 
-  async function handleUploadSuccess() {
+  // ✅ Agora o DashboardUploadPage não usa onUploadSuccess — apenas volta pro dashboard
+  async function handleVoltarAoDashboard() {
     setViewMode("dashboard");
     await carregarDados();
   }
@@ -550,19 +551,24 @@ export default function DashboardHomePage() {
 
   const conteudoPrincipal =
     viewMode === "upload" ? (
-      <UploadInline
-        onClose={() => setViewMode("dashboard")}
-        onUploadSuccess={handleUploadSuccess}
-      />
-    ) : viewMode === "notas" ? (       // ✅ NOVO: renderiza notas inline
+      // ✅ DashboardUploadPage no lugar do UploadInline — sem props de callback
+      // O botão "voltar" abaixo substitui o onClose
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={handleVoltarAoDashboard}
+          className="self-start inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-700 bg-[#061538] px-3 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+        >
+          ← Voltar ao dashboard
+        </button>
+        <DashboardUploadPage abaInicial="importar" />
+      </div>
+    ) : viewMode === "notas" ? (
       <DashboardNotasPage />
     ) : mercadoSelecionado === "b3" ? (
       conteudoB3
     ) : (
       conteudoForex
     );
-
-  // ─── Render ────────────────────────────────────────────────────────────────
 
   // ─── Helpers de estilo dos botões de acesso rápido ────────────────────────
 
@@ -577,6 +583,8 @@ export default function DashboardHomePage() {
       ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
       : "border-slate-800 bg-[#061538] text-slate-300 hover:border-emerald-500/50";
   }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -640,7 +648,6 @@ export default function DashboardHomePage() {
               <BarChart3 className="h-4 w-4 text-cyan-400" />
               Resumo Mensal
             </button>
-            {/* ✅ CORRIGIDO */}
             <button
               onClick={() => setViewMode("notas")}
               className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("notas")}`}
@@ -717,7 +724,6 @@ export default function DashboardHomePage() {
               <span>Resumo Mensal</span>
             </button>
 
-            {/* ✅ CORRIGIDO */}
             <button
               onClick={() => setViewMode("notas")}
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("notas")}`}
@@ -730,9 +736,7 @@ export default function DashboardHomePage() {
 
         {/* Coluna direita */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-          {/* Seletor de meses — só no modo dashboard */}
           {viewMode === "dashboard" && seletorMeses}
-
           {conteudoPrincipal}
         </div>
       </div>

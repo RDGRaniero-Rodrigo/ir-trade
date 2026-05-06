@@ -250,11 +250,18 @@ export default function DashboardHomePage() {
   }, [notasForex, resumosMensaisForex]);
 
   function abrirAba(aba: AbaUpload) {
-    // Se clicar na mesma aba que está aberta, fecha o painel
     setAbaUpload((prev) => (prev === aba ? null : aba));
   }
 
   const painelAberto = abaUpload !== null;
+
+  // Labels das abas
+  const abasConfig: { key: AbaUpload; label: string }[] = [
+    { key: "importar", label: "Importar Nota" },
+    { key: "mensal", label: "Resumo Mensal" },
+    { key: "anual", label: "Resumo Anual" },
+    { key: "notas", label: "Notas Salvas" },
+  ];
 
   return (
     <div className="text-white">
@@ -341,6 +348,24 @@ export default function DashboardHomePage() {
         {/* ── Coluna direita: painel dinâmico ── */}
         {painelAberto && (
           <div className="min-w-0 flex-1">
+            {/* ── Abas de navegação ── */}
+            <div className="mb-6 flex flex-wrap gap-2">
+              {abasConfig.map((aba) => (
+                <button
+                  key={aba.key}
+                  onClick={() => setAbaUpload(aba.key)}
+                  className={`inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold transition ${
+                    abaUpload === aba.key
+                      ? "bg-emerald-500 text-white"
+                      : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                  }`}
+                >
+                  {aba.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Conteúdo do painel ── */}
             <DashboardUploadPage abaInicial={abaUpload!} />
           </div>
         )}

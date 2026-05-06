@@ -157,6 +157,7 @@ type ResumoAnualForex = {
 
 type Props = {
   abaInicial?: AbaAtiva;
+  ocultarAbas?: boolean;
 };
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -318,7 +319,7 @@ function CardResumoValor({
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function DashboardUploadPage({ abaInicial = "importar" }: Props) {
+export default function DashboardUploadPage({ abaInicial = "importar", ocultarAbas = false }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [senhaPdf, setSenhaPdf] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -496,8 +497,6 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  // ✅ CORRIGIDO: usa mercadoSelecionado (state) em vez do localStorage
-  // ✅ CORRIGIDO: aceita CSV como texto puro para Forex
   async function handleLerArquivo() {
     if (!file) { setErro("Selecione um arquivo."); return; }
     try {
@@ -513,19 +512,16 @@ export default function DashboardUploadPage({ abaInicial = "importar" }: Props) 
         const ehEml = file.type === "message/rfc822" || nome.endsWith(".eml");
         const ehCsv = file.type === "text/csv" || nome.endsWith(".csv");
 
-        // ✅ DEPOIS
-let textoArquivo: string;
+        let textoArquivo: string;
 
-if (ehEml) {
-  // EML usa latin-1 para preservar o base64 intacto
-  const buffer = await file.arrayBuffer();
-  textoArquivo = new TextDecoder("latin1").decode(buffer);
-} else if (ehCsv) {
-  textoArquivo = await file.text(); // CSV pode ficar em UTF-8
-} else {
-  textoArquivo = await extrairTextoDoPDF(file);
-}
-
+        if (ehEml) {
+          const buffer = await file.arrayBuffer();
+          textoArquivo = new TextDecoder("latin1").decode(buffer);
+        } else if (ehCsv) {
+          textoArquivo = await file.text();
+        } else {
+          textoArquivo = await extrairTextoDoPDF(file);
+        }
 
         const dadosForex = extrairDadosForex(textoArquivo);
         const jaExiste = notasForexSalvas.some(
@@ -536,7 +532,6 @@ if (ehEml) {
         return;
       }
 
-      // ── B3 ──
       const textoPdf = await extrairTextoDoPDF(file, senhaPdf || undefined);
       const dadosB3 = extrairDadosXP(textoPdf);
       const resultadoValidacao = validarNotaXP(dadosB3);
@@ -670,29 +665,31 @@ if (ehEml) {
       <div className="mx-auto max-w-7xl px-1 py-4">
 
         {/* ── Abas ── */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {(["importar", "mensal", "anual", "notas"] as AbaAtiva[]).map((aba) => {
-            const labels: Record<AbaAtiva, string> = {
-              importar: "Importar Nota",
-              mensal: "Resumo Mensal",
-              anual: "Resumo Anual",
-              notas: "Notas Salvas",
-            };
-            return (
-              <button
-                key={aba}
-                onClick={() => setAbaAtiva(aba)}
-                className={`inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold transition ${
-                  abaAtiva === aba
-                    ? "bg-emerald-500 text-white"
-                    : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
-                }`}
-              >
-                {labels[aba]}
-              </button>
-            );
-          })}
-        </div>
+        {!ocultarAbas && (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {(["importar", "mensal", "anual", "notas"] as AbaAtiva[]).map((aba) => {
+              const labels: Record<AbaAtiva, string> = {
+                importar: "Importar Nota",
+                mensal: "Resumo Mensal",
+                anual: "Resumo Anual",
+                notas: "Notas Salvas",
+              };
+              return (
+                <button
+                  key={aba}
+                  onClick={() => setAbaAtiva(aba)}
+                  className={`inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold transition ${
+                    abaAtiva === aba
+                      ? "bg-emerald-500 text-white"
+                      : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+                  }`}
+                >
+                  {labels[aba]}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── ABA: Importar ── */}
         {abaAtiva === "importar" && (

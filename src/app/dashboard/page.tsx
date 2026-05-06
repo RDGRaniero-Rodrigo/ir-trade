@@ -20,16 +20,18 @@ import {
   Receipt,
   BarChart3,
   FileText,
+  Upload,
+  Calendar,
 } from "lucide-react";
 import { GraficoCandlesMensal } from "@/components/dashboard/GraficoCandlesMensal";
 import { GraficoCandlesForex } from "@/components/dashboard/GraficoCandlesForex";
-import DashboardUploadPage from "@/features/dashboard-upload/DashboardUploadPage"; // ✅ substituiu UploadInline
+import DashboardUploadPage from "@/features/dashboard-upload/DashboardUploadPage";
 import DashboardNotasPage from "@/features/dashboard-notas/DashboardNotasPage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type MercadoSelecionado = "b3" | "forex";
-type ViewMode = "dashboard" | "upload" | "notas";
+type ViewMode = "mensal" | "anual" | "upload" | "notas";
 
 type NotaSalva = {
   id: string;
@@ -171,11 +173,20 @@ function CardResumoValor({
   );
 }
 
+// ─── Configuração das abas ────────────────────────────────────────────────────
+
+const ABAS_CONFIG: { key: ViewMode; label: string; icon: React.ElementType }[] = [
+  { key: "upload", label: "Importar Nota", icon: Upload },
+  { key: "mensal", label: "Resumo Mensal", icon: BarChart3 },
+  { key: "anual", label: "Resumo Anual", icon: Calendar },
+  { key: "notas", label: "Notas Salvas", icon: Receipt },
+];
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardHomePage() {
   const [mercadoSelecionado, setMercadoSelecionado] = useState<MercadoSelecionado>("b3");
-  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
+  const [viewMode, setViewMode] = useState<ViewMode>("mensal");
   const [carregando, setCarregando] = useState(true);
   const [notasB3, setNotasB3] = useState<NotaSalva[]>([]);
   const [resumosForex, setResumosForex] = useState<ResumoMensalForex[]>([]);
@@ -215,14 +226,6 @@ export default function DashboardHomePage() {
     if (config.mercado === "forex") setMercadoSelecionado("forex");
     carregarDados();
   }, [carregarDados]);
-
-  // ─── Após upload bem-sucedido ──────────────────────────────────────────────
-
-  // ✅ Agora o DashboardUploadPage não usa onUploadSuccess — apenas volta pro dashboard
-  async function handleVoltarAoDashboard() {
-    setViewMode("dashboard");
-    await carregarDados();
-  }
 
   // ─── Resumos mensais B3 ────────────────────────────────────────────────────
 
@@ -303,7 +306,6 @@ export default function DashboardHomePage() {
   function handleMudarMercado(mercado: MercadoSelecionado) {
     setMercadoSelecionado(mercado);
     setConfigToStorage(mercado);
-    setViewMode("dashboard");
     if (mercado === "b3" && resumosMensaisB3.length > 0) {
       setChaveMesSelecionado(resumosMensaisB3[0].chave);
     } else if (mercado === "forex" && resumosForex.length > 0) {
@@ -329,6 +331,31 @@ export default function DashboardHomePage() {
       </div>
     );
   }
+
+  // ─── Componente: Abas de Navegação ─────────────────────────────────────────
+
+  const abasNavegacao = (
+    <div className="flex flex-wrap gap-2">
+      {ABAS_CONFIG.map((aba) => {
+        const Icon = aba.icon;
+        const ativo = viewMode === aba.key;
+        return (
+          <button
+            key={aba.key}
+            onClick={() => setViewMode(aba.key)}
+            className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${
+              ativo
+                ? "bg-emerald-500 text-white"
+                : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {aba.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   // ─── Seletor de meses ──────────────────────────────────────────────────────
 
@@ -547,42 +574,28 @@ export default function DashboardHomePage() {
     </div>
   );
 
-  // ─── Conteúdo principal ────────────────────────────────────────────────────
+  
+const conteudoAnual = (
+  <DashboardUploadPage abaInicial="anual" ocultarAbas />
+);
 
-  const conteudoPrincipal =
-    viewMode === "upload" ? (
-      // ✅ DashboardUploadPage no lugar do UploadInline — sem props de callback
-      // O botão "voltar" abaixo substitui o onClose
-      <div className="flex flex-col gap-3">
-        <button
-          onClick={handleVoltarAoDashboard}
-          className="self-start inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-700 bg-[#061538] px-3 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
-        >
-          ← Voltar ao dashboard
-        </button>
-        <DashboardUploadPage abaInicial="importar" />
-      </div>
-    ) : viewMode === "notas" ? (
-      <DashboardNotasPage />
-    ) : mercadoSelecionado === "b3" ? (
-      conteudoB3
-    ) : (
-      conteudoForex
-    );
 
-  // ─── Helpers de estilo dos botões de acesso rápido ────────────────────────
 
-  function estiloAcessoRapidoDesktop(modo: ViewMode) {
-    return viewMode === modo
-      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-      : "border-slate-800 bg-[#061538] text-slate-300 hover:border-emerald-500/50 hover:bg-[#081733]";
-  }
+  // ─── Conteúdo principal baseado no viewMode ────────────────────────────────
 
-  function estiloAcessoRapidoMobile(modo: ViewMode) {
-    return viewMode === modo
-      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-      : "border-slate-800 bg-[#061538] text-slate-300 hover:border-emerald-500/50";
-  }
+  const conteudoPrincipal = () => {
+    switch (viewMode) {
+      case "upload":
+        return <DashboardUploadPage abaInicial="importar" />;
+      case "notas":
+        return <DashboardNotasPage />;
+      case "anual":
+        return conteudoAnual;
+      case "mensal":
+      default:
+        return mercadoSelecionado === "b3" ? conteudoB3 : conteudoForex;
+    }
+  };
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -626,37 +639,13 @@ export default function DashboardHomePage() {
           </Button>
         </div>
 
-        {viewMode === "dashboard" && seletorMeses}
+        {/* Abas sempre visíveis */}
+        {abasNavegacao}
 
-        {conteudoPrincipal}
+        {/* Seletor de meses (só no Resumo Mensal) */}
+        {viewMode === "mensal" && seletorMeses}
 
-        {/* Links rápidos */}
-        <div className="border-t border-slate-700/50 pt-2">
-          <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">Acesso rápido</p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => setViewMode("upload")}
-              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("upload")}`}
-            >
-              <FileText className="h-4 w-4 text-emerald-400" />
-              Importar Nota
-            </button>
-            <button
-              onClick={() => setViewMode("dashboard")}
-              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("dashboard")}`}
-            >
-              <BarChart3 className="h-4 w-4 text-cyan-400" />
-              Resumo Mensal
-            </button>
-            <button
-              onClick={() => setViewMode("notas")}
-              className={`flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center text-[10px] transition ${estiloAcessoRapidoMobile("notas")}`}
-            >
-              <Receipt className="h-4 w-4 text-violet-400" />
-              Notas Salvas
-            </button>
-          </div>
-        </div>
+        {conteudoPrincipal()}
       </div>
 
       {/* ============================================================
@@ -681,7 +670,7 @@ export default function DashboardHomePage() {
             <Button
               onClick={() => handleMudarMercado("b3")}
               className={`h-9 w-full justify-start rounded-lg px-3 text-xs font-semibold transition ${
-                mercadoSelecionado === "b3" && viewMode === "dashboard"
+                mercadoSelecionado === "b3"
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
                   : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
               }`}
@@ -692,7 +681,7 @@ export default function DashboardHomePage() {
             <Button
               onClick={() => handleMudarMercado("forex")}
               className={`h-9 w-full justify-start rounded-lg px-3 text-xs font-semibold transition ${
-                mercadoSelecionado === "forex" && viewMode === "dashboard"
+                mercadoSelecionado === "forex"
                   ? "bg-emerald-500 text-white hover:bg-emerald-600"
                   : "bg-[#0c1d45] text-slate-300 hover:bg-[#122552] hover:text-white"
               }`}
@@ -701,43 +690,17 @@ export default function DashboardHomePage() {
               Forex / Internacional
             </Button>
           </div>
-
-          <div className="border-t border-slate-700/50" />
-
-          {/* Acesso rápido */}
-          <div className="flex flex-col gap-1.5">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">Acesso rápido</p>
-
-            <button
-              onClick={() => setViewMode("upload")}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("upload")}`}
-            >
-              <FileText className="h-3.5 w-3.5 flex-shrink-0 text-emerald-400" />
-              <span>Importar Nota</span>
-            </button>
-
-            <button
-              onClick={() => setViewMode("dashboard")}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("dashboard")}`}
-            >
-              <BarChart3 className="h-3.5 w-3.5 flex-shrink-0 text-cyan-400" />
-              <span>Resumo Mensal</span>
-            </button>
-
-            <button
-              onClick={() => setViewMode("notas")}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition ${estiloAcessoRapidoDesktop("notas")}`}
-            >
-              <Receipt className="h-3.5 w-3.5 flex-shrink-0 text-violet-400" />
-              <span>Notas Salvas</span>
-            </button>
-          </div>
         </div>
 
         {/* Coluna direita */}
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-          {viewMode === "dashboard" && seletorMeses}
-          {conteudoPrincipal}
+          {/* ✅ Abas SEMPRE visíveis no topo */}
+          {abasNavegacao}
+
+          {/* Seletor de meses (só no Resumo Mensal) */}
+          {viewMode === "mensal" && seletorMeses}
+
+          {conteudoPrincipal()}
         </div>
       </div>
     </>

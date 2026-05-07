@@ -1,3 +1,5 @@
+// app/api/webhook/hotmart/route.ts
+
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -5,6 +7,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// ✅ Senha padrão para novos usuários
+const SENHA_TEMPORARIA = "primeiroacesso";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,9 +21,10 @@ export async function POST(req: NextRequest) {
 
     // 👤 Dados do comprador
     const emailRaw: string = data?.buyer?.email;
-    const email = emailRaw?.trim().toLowerCase(); // ✅ normaliza email
+    const email = emailRaw?.trim().toLowerCase();
     const nome: string = data?.buyer?.first_name || data?.buyer?.name;
     const sobrenome: string = data?.buyer?.last_name;
+    const nomeCompleto = `${nome || ""} ${sobrenome || ""}`.trim();
     const cpf: string = data?.buyer?.document;
     const ddd: string = data?.buyer?.checkout_phone_code;
     const telefone: string = data?.buyer?.checkout_phone;
@@ -61,89 +67,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ✅ Busca userId
+    // ✅ Busca userId existente
     let userId: string | undefined;
+    let isNewUser = false;
 
-    // 1️⃣ Tenta criar no Auth
-    const { data: authData, error: authError } =
-      await supabase.auth.admin.createUser({
-        email: email,
-        password: cpf || "IrTrade@2024",
-        email_confirm: true,
+    // 1️⃣ Busca na tabela profiles
+    const { data: profileRows } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .limit(1);
+
+    userId = profileRows?.[0]?.id;
+
+    // 2️⃣ Se não achou, busca no Auth
+    if (!userId) {
+      const { data: userList } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
       });
 
-    if (authError) {
-      console.log("⚠️ Auth createUser error:", authError.message);
-    }
-
-    userId = authData?.user?.id;
-    console.log("🆔 userId após createUser:", userId);
-
-    // 2️⃣ Busca na tabela profiles
-    if (!userId) {
-      console.log("🔍 Buscando userId na tabela profiles...");
-
-      const { data: profileRows, error: profileError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .limit(1);
-
-      if (profileError) {
-        console.log("⚠️ Erro ao buscar profile:", profileError.message);
-      } else {
-        console.log("📋 Profiles encontrados:", profileRows);
-      }
-
-      userId = profileRows?.[0]?.id;
-      console.log("🆔 userId via profiles:", userId);
-    }
-
-    // 3️⃣ Busca no Auth via listUsers com normalização
-    if (!userId) {
-      console.log("🔍 Buscando userId via listUsers...");
-
-      const { data: userList, error: listError } =
-        await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-
-      if (listError) {
-        console.error("❌ Erro ao listar usuários:", listError.message);
-      } else {
-        // 🔎 Loga todos os emails pra comparação
-        console.log(
-          "📧 Emails no Auth:",
-          userList?.users?.map((u) => `[${u.email}]`)
-        );
-
-        const match = userList?.users?.find(
-          (u) => u.email?.trim().toLowerCase() === email
-        );
-
-        if (match) {
-          userId = match.id;
-          console.log("✅ Usuário encontrado via listUsers:", userId);
-        } else {
-          console.log("🔚 Não encontrado. Email buscado:", `[${email}]`);
-        }
-      }
-    }
-
-    // 4️⃣ Última tentativa: getUserById não é possível sem ID,
-    //    então tenta buscar via RPC na tabela auth.users diretamente
-    if (!userId) {
-      console.log("🔍 Tentativa final: buscando via auth.users (RPC)...");
-
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        "get_user_id_by_email",
-        { user_email: email }
+      const match = userList?.users?.find(
+        (u) => u.email?.trim().toLowerCase() === email
       );
 
-      if (rpcError) {
-        console.log("⚠️ RPC error:", rpcError.message);
-      } else {
-        userId = rpcData;
-        console.log("🆔 userId via RPC:", userId);
+      userId = match?.id;
+    }
+
+    // 3️⃣ Se ainda não existe, CRIA o usuário com senha fixa
+    if (!userId) {
+      console.log("🆕 Criando novo usuário com senha temporária...");
+
+      const { data: authData, error: authError } =
+        await supabase.auth.admin.createUser({
+          email: email,
+          password: SENHA_TEMPORARIA, // ✅ Senha fixa!
+          email_confirm: true,
+          user_metadata: {
+            nome_completo: nomeCompleto,
+            primeiro_acesso: true,
+          },
+        });
+
+      if (authError) {
+        console.error("❌ Erro ao criar usuário:", authError.message);
+        return NextResponse.json(
+          { error: "Erro ao criar usuário", details: authError.message },
+          { status: 500 }
+        );
       }
+
+      userId = authData?.user?.id;
+      isNewUser = true;
+
+      console.log("✅ Usuário criado com senha temporária:", userId);
     }
 
     // 🚨 Segurança
@@ -155,9 +132,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ Monta dados para salvar
     let updateData: Record<string, unknown> = {
       email,
-      nome_completo: `${nome || ""} ${sobrenome || ""}`.trim(),
+      nome_completo: nomeCompleto,
       cpf,
       whatsapp,
       endereco,
@@ -171,9 +149,15 @@ export async function POST(req: NextRequest) {
       metodo_pagamento,
       valor,
       hotmart_transaction_id: transaction,
+      primeiro_acesso: isNewUser ? true : undefined, // Só seta se for novo
     };
 
-    // ✅ Monta dados conforme evento
+    // Remove campos undefined
+    updateData = Object.fromEntries(
+      Object.entries(updateData).filter(([_, v]) => v !== undefined)
+    );
+
+    // ✅ Dados conforme evento
     if (
       event === "PURCHASE_APPROVED" ||
       event === "PURCHASE_COMPLETE" ||
@@ -205,28 +189,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // ✅ Upsert
+    // ✅ Upsert no profiles
     const { error: upsertError } = await supabase
       .from("profiles")
-      .upsert(
-        { ...updateData, id: userId },
-        { onConflict: "email" }
-      );
+      .upsert({ ...updateData, id: userId }, { onConflict: "id" });
 
     if (upsertError) {
-      console.error(
-        "❌ Erro Supabase upsert:",
-        upsertError.message,
-        upsertError.details,
-        upsertError.hint
-      );
+      console.error("❌ Erro Supabase upsert:", upsertError.message);
       return NextResponse.json(
         { error: "Erro ao salvar no banco", details: upsertError.message },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Webhook OK: ${event} - ${email}`);
+    console.log(`✅ Webhook OK: ${event} - ${email} (novo: ${isNewUser})`);
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     console.error("❌ Erro no webhook:", err);

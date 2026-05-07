@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true);
     setMensagem("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
     });
@@ -33,43 +33,30 @@ export default function LoginPage() {
       setMensagem("Email ou senha incorretos");
       setTipoMensagem("erro");
       setLoading(false);
-    } else {
-      setMensagem("Login realizado! Redirecionando...");
-      setTipoMensagem("sucesso");
-      router.push("/dashboard");
-    }
-  };
-
-  const handleSignup = async () => {
-    if (!email || !senha) {
-      setMensagem("Preencha email e senha");
-      setTipoMensagem("erro");
       return;
     }
 
-    if (senha.length < 6) {
-      setMensagem("A senha deve ter pelo menos 6 caracteres");
-      setTipoMensagem("erro");
-      return;
+    // ✅ Verifica se é primeiro acesso
+    const userId = authData.user?.id;
+    
+    if (userId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("primeiro_acesso")
+        .eq("id", userId)
+        .single();
+
+      if (profile?.primeiro_acesso === true) {
+        setMensagem("Primeiro acesso! Redirecionando...");
+        setTipoMensagem("sucesso");
+        router.push("/completar-cadastro");
+        return;
+      }
     }
 
-    setLoading(true);
-    setMensagem("");
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: senha,
-    });
-
-    if (error) {
-      setMensagem("Erro ao criar conta: " + error.message);
-      setTipoMensagem("erro");
-    } else {
-      setMensagem("Conta criada! Verifique seu email.");
-      setTipoMensagem("sucesso");
-    }
-
-    setLoading(false);
+    setMensagem("Login realizado! Redirecionando...");
+    setTipoMensagem("sucesso");
+    router.push("/dashboard");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -106,18 +93,15 @@ export default function LoginPage() {
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="mb-3 w-full rounded-lg bg-[#3a86ff] py-3 font-semibold text-white transition hover:bg-[#2d6fd9] disabled:opacity-50"
+          className="w-full rounded-lg bg-[#3a86ff] py-3 font-semibold text-white transition hover:bg-[#2d6fd9] disabled:opacity-50"
         >
           {loading ? "Aguarde..." : "Entrar"}
         </button>
 
-        <button
-          onClick={handleSignup}
-          disabled={loading}
-          className="w-full rounded-lg bg-[#06d6a0] py-3 font-semibold text-black transition hover:bg-[#05b384] disabled:opacity-50"
-        >
-          Criar conta
-        </button>
+        {/* ✅ Aviso para novos usuários */}
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Primeiro acesso? Use a senha: <span className="font-mono text-[#06d6a0]">primeiroacesso</span>
+        </p>
 
         {mensagem && (
           <p

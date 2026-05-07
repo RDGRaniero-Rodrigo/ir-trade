@@ -360,6 +360,22 @@ export default function DashboardUploadPage({ abaInicial = "importar", ocultarAb
     carregarDadosIniciais();
   }, []);
 
+  // 🆕 NOVO: Recarrega dados ao mudar para abas de resumo
+  useEffect(() => {
+    async function recarregarDados() {
+      if (abaAtiva === "mensal" || abaAtiva === "anual") {
+        try {
+          const [b3, forex] = await Promise.all([listarNotasB3(), listarNotasForex()]);
+          setNotasSalvas(b3.map(mapNotaB3BancoParaLocal));
+          setNotasForexSalvas(forex.map(mapNotaForexBancoParaLocal));
+        } catch (error) {
+          console.error("Erro ao recarregar notas:", error);
+        }
+      }
+    }
+    recarregarDados();
+  }, [abaAtiva]);
+
   useEffect(() => {
     async function carregarResumoMensalForex() {
       if (notasForexSalvas.length === 0) {

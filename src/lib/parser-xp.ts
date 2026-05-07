@@ -36,12 +36,13 @@ function detectarTipoNota(texto: string): "BMF" | "BOVESPA" {
   return "BMF";
 }
 
-// ─── Extração financeira BM&F (lógica corrigida) ───────────────────────────────
+// ─── Extração financeira BM&F (lógica corrigida v2) ───────────────────────────
 function extrairFinanceiroBMF(texto: string, dados: DadosXP): void {
   // ─── Valor dos negócios ─────────────────────────────────────────────────────
+  // Formato: "Valor dos negócios 0,00   0,00   0,00   0,00   40,00 | C IRRF"
   {
     const match = texto.match(
-      /Valor\s+dos\s+neg[oó]cios\s+([\d\s,\.]+?)\s*\|\s*([CD])/i
+      /Valor\s+dos\s+neg[oó]cios\s+([\d\s,\.]+?)\s*\|\s*([CD])\s*IRRF/i
     );
     if (match) {
       const numeros = match[1].match(/\d{1,3}(?:\.\d{3})*,\d{2}/g);
@@ -54,15 +55,17 @@ function extrairFinanceiroBMF(texto: string, dados: DadosXP): void {
   }
 
   // ─── Bloco das taxas ────────────────────────────────────────────────────────
+  // Formato: "IRRF   IRRF Day Trade (proj.)   Taxa operacional   Taxa registro BM&F   Taxas BM&F (emol+f.gar) 0,00|   0,39   0,00   0,32   0,18 | D"
   {
     const match = texto.match(
-      /IRRF\s+IRRF\s+Day\s+Trade(?:\s*\(proj\.\))?\s+Taxa\s+operacional\s+Taxa\s+registro\s+BM&F\s+Taxas\s+BM&F\s*\(emol\+f\.gar\)\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\|?\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})/i
+      /Taxas\s+BM&F\s*\(emol\+f\.gar\)\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\|?\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})/i
     );
     if (match) {
-      const irrfDayTrade    = parseNumeroBR(match[2]);
-      const taxaOperacional = parseNumeroBR(match[3]);
-      const taxaRegistro    = parseNumeroBR(match[4]);
-      const taxaBmfEmol     = parseNumeroBR(match[5]);
+      const irrf            = parseNumeroBR(match[1]); // IRRF (0,00)
+      const irrfDayTrade    = parseNumeroBR(match[2]); // IRRF Day Trade (0,39)
+      const taxaOperacional = parseNumeroBR(match[3]); // Taxa operacional (0,00)
+      const taxaRegistro    = parseNumeroBR(match[4]); // Taxa registro BM&F (0,32)
+      const taxaBmfEmol     = parseNumeroBR(match[5]); // Taxas BM&F emol+f.gar (0,18)
 
       dados.irrf            = irrfDayTrade;
       dados.taxaOperacional = taxaOperacional;
@@ -71,12 +74,13 @@ function extrairFinanceiroBMF(texto: string, dados: DadosXP): void {
   }
 
   // ─── Total líquido da nota ──────────────────────────────────────────────────
+  // Formato: "Total líquido da nota 0,00   0,00   0,00|   39,11 | C   39,50 | C   39,11 | C"
   {
-    const trechoMatch = texto.match(
-      /Total\s+l[ií]quido\s+da\s+nota\s+(.*?)(?:\+Custos\s+BM&F|Capitais\s+e\s+regi[oõ]es|$)/i
+    const match = texto.match(
+      /Total\s+l[ií]quido\s+da\s+nota\s+([\s\S]*?)(?:\+Custos|Capitais|$)/i
     );
-    if (trechoMatch) {
-      const trecho = trechoMatch[1];
+    if (match) {
+      const trecho = match[1];
       const pares = [...trecho.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})\s*\|?\s*([CD])/gi)];
       if (pares.length > 0) {
         const ultimoPar = pares[pares.length - 1];
@@ -89,6 +93,7 @@ function extrairFinanceiroBMF(texto: string, dados: DadosXP): void {
     }
   }
 }
+
 
 // ─── Extração financeira Bovespa (mantida igual) ──────────────────────────────
 function extrairFinanceiroBovespa(texto: string, dados: DadosXP): void {

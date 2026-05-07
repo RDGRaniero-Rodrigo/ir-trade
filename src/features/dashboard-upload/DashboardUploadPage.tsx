@@ -158,7 +158,9 @@ type ResumoAnualForex = {
 type Props = {
   abaInicial?: AbaAtiva;
   ocultarAbas?: boolean;
+  onNotaSalva?: () => void; // 🆕 Callback quando uma nota for salva
 };
+
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -319,7 +321,12 @@ function CardResumoValor({
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function DashboardUploadPage({ abaInicial = "importar", ocultarAbas = false }: Props) {
+export default function DashboardUploadPage({ 
+  abaInicial = "importar", 
+  ocultarAbas = false,
+  onNotaSalva // 🆕 Recebe o callback
+}: Props) {
+
   const [file, setFile] = useState<File | null>(null);
   const [senhaPdf, setSenhaPdf] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -610,19 +617,21 @@ export default function DashboardUploadPage({ abaInicial = "importar", ocultarAb
           floatingUsd: dadosExtraidosForex.floatingUsd,
         });
         const atualizado = await listarNotasForex();
-        setNotasForexSalvas(atualizado.map(mapNotaForexBancoParaLocal));
-        setStatus("success");
-        setErro("");
-        setFile(null);
-        setSenhaPdf("");
-        setDadosExtraidosForex(null);
-        setAbaAtiva("notas");
-      } catch (error) {
-        console.error(error);
-        setErro("Não foi possível salvar o relatório Forex.");
-      }
-      return;
-    }
+setNotasForexSalvas(atualizado.map(mapNotaForexBancoParaLocal));
+setStatus("success");
+setErro("");
+onNotaSalva?.(); // 🆕 Avisa o componente pai
+setFile(null);
+setSenhaPdf("");
+setDadosExtraidosForex(null);
+setAbaAtiva("notas");
+} catch (error) {
+console.error(error);
+setErro("Não foi possível salvar o relatório Forex.");
+}
+return;
+}
+
 
     if (!dadosExtraidosB3) return;
     if (!dadosExtraidosB3.numeroNota || !dadosExtraidosB3.dataPregao || !dadosExtraidosB3.cliente) {
@@ -645,18 +654,20 @@ export default function DashboardUploadPage({ abaInicial = "importar", ocultarAb
         sinalLiquido: dadosExtraidosB3.sinalLiquido,
       });
       const atualizado = await listarNotasB3();
-      setNotasSalvas(atualizado.map(mapNotaB3BancoParaLocal));
-      setStatus("success");
-      setErro("");
-      setFile(null);
-      setSenhaPdf("");
-      setDadosExtraidosB3(null);
-      setAbaAtiva("notas");
-    } catch (error) {
-      console.error(error);
-      setErro("Não foi possível salvar a nota B3.");
-    }
-  }
+setNotasSalvas(atualizado.map(mapNotaB3BancoParaLocal));
+setStatus("success");
+setErro("");
+onNotaSalva?.(); // 🆕 Avisa o componente pai
+setFile(null);
+setSenhaPdf("");
+setDadosExtraidosB3(null);
+setAbaAtiva("notas");
+} catch (error) {
+console.error(error);
+setErro("Não foi possível salvar a nota B3.");
+}
+}
+
 
   async function handleExcluirNota(id: string) {
     try {

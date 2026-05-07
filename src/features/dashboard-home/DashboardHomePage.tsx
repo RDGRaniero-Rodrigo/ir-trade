@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+
 import {
   calcularFechamentosMensaisForex,
   type ResumoMensalForex,
@@ -206,30 +207,32 @@ export default function DashboardHomePage() {
   const [notasForex, setNotasForex] = useState<NotaForexSalva[]>([]);
   const [resumosMensaisForex, setResumosMensaisForex] = useState<ResumoMensalForex[]>([]);
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        const [b3, forex] = await Promise.all([listarNotasB3(), listarNotasForex()]);
-        setNotasB3(b3.map(mapNotaB3BancoParaLocal));
-        setNotasForex(forex.map(mapNotaForexBancoParaLocal));
+  const carregar = useCallback(async () => {
+  try {
+    const [b3, forex] = await Promise.all([listarNotasB3(), listarNotasForex()]);
+    setNotasB3(b3.map(mapNotaB3BancoParaLocal));
+    setNotasForex(forex.map(mapNotaForexBancoParaLocal));
 
-        const relatorios = forex.map((nota) => ({
-          id: nota.id,
-          data: normalizarDataForexParaCalculo(nota.data_relatorio ?? ""),
-          saldoInicial: Number(nota.saldo_inicial_usd ?? 0),
-          resultadoDia: Number(nota.resultado_dia_usd ?? 0),
-          depositoRetirada: Number(nota.deposito_retirada_usd ?? 0),
-          saldoFinal: Number(nota.saldo_final_usd ?? 0),
-        }));
+    const relatorios = forex.map((nota) => ({
+      id: nota.id,
+      data: normalizarDataForexParaCalculo(nota.data_relatorio ?? ""),
+      saldoInicial: Number(nota.saldo_inicial_usd ?? 0),
+      resultadoDia: Number(nota.resultado_dia_usd ?? 0),
+      depositoRetirada: Number(nota.deposito_retirada_usd ?? 0),
+      saldoFinal: Number(nota.saldo_final_usd ?? 0),
+    }));
 
-        const resumos = await calcularFechamentosMensaisForex(relatorios);
-        setResumosMensaisForex(resumos);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    carregar();
-  }, []);
+    const resumos = await calcularFechamentosMensaisForex(relatorios);
+    setResumosMensaisForex(resumos);
+  } catch (e) {
+    console.error(e);
+  }
+}, []);
+
+useEffect(() => {
+  carregar();
+}, [carregar]);
+
 
   const resumoB3 = useMemo(() => {
     const totalLiquido = notasB3.reduce((acc, nota) => {

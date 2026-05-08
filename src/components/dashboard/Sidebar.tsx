@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Upload, FileText, X } from "lucide-react";
+import { LayoutDashboard, FolderOpen, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const itensMenu = [
@@ -13,17 +13,10 @@ const itensMenu = [
     exact: true,
   },
   {
-    href: "/dashboard/upload",
-    label: "Upload PDF",
-    icon: Upload,
+    href: "/dashboard/notas",
+    label: "Minhas Notas",
+    icon: FolderOpen,
     exact: false,
-  },
-  {
-    href: "/dashboard/upload?aba=notas",   // ← aponta para a aba notas
-    label: "Notas",
-    icon: FileText,
-    exact: false,
-    matchHref: "/dashboard/notas",         // ← detecta /notas como ativo também
   },
 ];
 
@@ -89,11 +82,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-2 py-4">
           <div className="space-y-1">
             {itensMenu.map((item) => {
-              const ativo =
-                item.exact
-                  ? pathname === item.href
-                  : pathname.startsWith(item.matchHref ?? item.href) ||
-                    pathname === item.href;
+              const ativo = item.exact
+                ? pathname === item.href
+                : pathname.startsWith(item.href);
 
               const Icone = item.icon;
 

@@ -369,7 +369,12 @@ useEffect(() => {
             </div>
 
             {/* ── Conteúdo do painel ── */}
-            <DashboardUploadPage abaInicial={abaUpload!} />
+            {/* ── Conteúdo do painel ── */}
+<DashboardUploadPage 
+  abaInicial={abaUpload!} 
+  onNotaSalva={carregar}   
+/>
+
           </div>
         )}
       </div>

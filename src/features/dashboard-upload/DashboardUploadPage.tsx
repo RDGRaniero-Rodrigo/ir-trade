@@ -6,6 +6,8 @@ import {
   salvarNotaForex,
   listarNotasB3,
   listarNotasForex,
+  buscarSenhaNotasB3,
+  salvarSenhaNotasB3,
   excluirNotaB3,
   excluirNotaForex,
   type NotaB3Banco,

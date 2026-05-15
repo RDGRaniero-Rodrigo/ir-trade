@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingReset, setLoadingReset] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [tipoMensagem, setTipoMensagem] = useState<"erro" | "sucesso">("erro");
 
@@ -36,9 +37,8 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ Verifica se é primeiro acesso
     const userId = authData.user?.id;
-    
+
     if (userId) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -59,7 +59,33 @@ export default function LoginPage() {
     router.push("/dashboard");
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleEsqueciSenha = async () => {
+    if (!email) {
+      setMensagem("Digite seu email antes de solicitar a redefinição.");
+      setTipoMensagem("erro");
+      return;
+    }
+
+    setLoadingReset(true);
+    setMensagem("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`, // ✅ corrigido
+    });
+
+    setLoadingReset(false);
+
+    if (error) {
+      setMensagem("Erro ao enviar e-mail. Tente novamente.");
+      setTipoMensagem("erro");
+      return;
+    }
+
+    setMensagem("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+    setTipoMensagem("sucesso");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => { // ✅ corrigido
     if (e.key === "Enter" && !loading) {
       handleLogin();
     }
@@ -77,7 +103,7 @@ export default function LoginPage() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown} // ✅ corrigido
           className="mb-3 w-full rounded-lg border border-slate-600 bg-[#0b132b] px-4 py-3 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
         />
 
@@ -86,9 +112,19 @@ export default function LoginPage() {
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          onKeyPress={handleKeyPress}
-          className="mb-4 w-full rounded-lg border border-slate-600 bg-[#0b132b] px-4 py-3 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+          onKeyDown={handleKeyDown} // ✅ corrigido
+          className="mb-2 w-full rounded-lg border border-slate-600 bg-[#0b132b] px-4 py-3 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
         />
+
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={handleEsqueciSenha}
+            disabled={loadingReset}
+            className="text-xs text-slate-400 transition hover:text-[#3a86ff] disabled:opacity-50"
+          >
+            {loadingReset ? "Enviando..." : "Esqueci minha senha"}
+          </button>
+        </div>
 
         <button
           onClick={handleLogin}
@@ -98,9 +134,9 @@ export default function LoginPage() {
           {loading ? "Aguarde..." : "Entrar"}
         </button>
 
-        {/* ✅ Aviso para novos usuários */}
         <p className="mt-4 text-center text-xs text-slate-400">
-          Primeiro acesso? Use a senha: <span className="font-mono text-[#06d6a0]">primeiroacesso</span>
+          Primeiro acesso? Use a senha:{" "}
+          <span className="font-mono text-[#06d6a0]">primeiroacesso</span>
         </p>
 
         {mensagem && (

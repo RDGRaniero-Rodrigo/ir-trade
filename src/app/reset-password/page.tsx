@@ -1,142 +1,157 @@
-// app/reset-password/page.tsx
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-export default function ResetPasswordPage() {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-
+export default function ResetSenhaPage() {
   const supabase = createClient();
   const router = useRouter();
 
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+  const [tipoMensagem, setTipoMensagem] = useState<"erro" | "sucesso">("erro");
+  const [sessaoValida, setSessaoValida] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError("Link inválido ou expirado. Solicite um novo.");
+    const verificarSessao = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        setSessaoValida(true);
+      } else {
+        setMensagem(
+          "Link inválido ou expirado. Solicite um novo e-mail de redefinição."
+        );
+        setTipoMensagem("erro");
       }
+
+      setVerificando(false);
     };
-    
-    checkSession();
-  }, [supabase.auth]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    verificarSessao();
+  }, []);
 
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres");
+  const handleRedefinir = async () => {
+    if (!novaSenha || !confirmarSenha) {
+      setMensagem("Preencha os dois campos.");
+      setTipoMensagem("erro");
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem");
+    if (novaSenha.length < 6) {
+      setMensagem("A senha deve ter no mínimo 6 caracteres.");
+      setTipoMensagem("erro");
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      setMensagem("As senhas não coincidem.");
+      setTipoMensagem("erro");
       return;
     }
 
     setLoading(true);
+    setMensagem("");
 
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
+    const { error } = await supabase.auth.updateUser({
+      password: novaSenha,
+    });
 
-      if (error) throw error;
+    setLoading(false);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        await supabase
-          .from("profiles")
-          .update({ primeiro_acesso: false })
-          .eq("id", user.id);
-      }
+    if (error) {
+      setMensagem("Erro ao redefinir senha. Tente novamente.");
+      setTipoMensagem("erro");
+      return;
+    }
 
-      setSuccess(true);
-      
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 2000);
+    // ✅ Rota corrigida
+    router.push("/reset-password/confirmado");
+  };
 
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Erro ao definir senha";
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !loading) {
+      handleRedefinir();
     }
   };
 
-  if (success) {
+  if (verificando) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full text-center">
-          <div className="text-green-500 text-5xl mb-4">✓</div>
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Senha definida com sucesso!
-          </h1>
-          <p className="text-gray-400">
-            Redirecionando para o dashboard...
-          </p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#0b132b]">
+        <p className="text-slate-400">Verificando link...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full">
-        <h1 className="text-2xl font-bold text-white text-center mb-2">
-          Defina sua senha
-        </h1>
-        <p className="text-gray-400 text-center mb-6">
-          Crie uma senha segura para acessar sua conta
+    <div className="flex min-h-screen items-center justify-center bg-[#0b132b] px-4">
+      <div className="w-full max-w-sm rounded-xl bg-[#1c2541] p-8">
+        <h2 className="mb-2 text-center text-2xl font-bold text-white">
+          Redefinir senha
+        </h2>
+        <p className="mb-6 text-center text-sm text-slate-400">
+          Digite e confirme sua nova senha
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-300 mb-2">Nova senha</label>
+        {sessaoValida ? (
+          <>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
-              placeholder="Mínimo 8 caracteres"
-              required
+              placeholder="Nova senha"
+              value={novaSenha}
+              onChange={(e) => setNovaSenha(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="mb-3 w-full rounded-lg border border-slate-600 bg-[#0b132b] px-4 py-3 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
             />
-          </div>
 
-          <div>
-            <label className="block text-gray-300 mb-2">Confirme a senha</label>
             <input
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none"
-              placeholder="Digite novamente"
-              required
+              placeholder="Confirmar nova senha"
+              value={confirmarSenha}
+              onChange={(e) => setConfirmarSenha(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="mb-4 w-full rounded-lg border border-slate-600 bg-[#0b132b] px-4 py-3 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
             />
+
+            <button
+              onClick={handleRedefinir}
+              disabled={loading}
+              className="w-full rounded-lg bg-[#3a86ff] py-3 font-semibold text-white transition hover:bg-[#2d6fd9] disabled:opacity-50"
+            >
+              {loading ? "Salvando..." : "Salvar nova senha"}
+            </button>
+          </>
+        ) : (
+          // ✅ Ação para sessão inválida
+          <div className="text-center">
+            <a
+              href="/reset-password"
+              className="text-sm text-[#3a86ff] hover:text-[#2d6fd9] transition"
+            >
+              Solicitar novo link →
+            </a>
           </div>
+        )}
 
-          {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition disabled:opacity-50"
+        {mensagem && (
+          <p
+            className={`mt-4 text-center text-sm ${
+              tipoMensagem === "erro" ? "text-red-400" : "text-green-400"
+            }`}
           >
-            {loading ? "Salvando..." : "Definir senha"}
-          </button>
-        </form>
+            {mensagem}
+          </p>
+        )}
+
+        <p className="mt-6 text-center text-xs text-slate-500">
+          <a href="/login" className="hover:text-[#3a86ff] transition">
+            ← Voltar ao login
+          </a>
+        </p>
       </div>
     </div>
   );
